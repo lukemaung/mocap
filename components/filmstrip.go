@@ -71,8 +71,6 @@ func (f *FilmStrip) SyncToBackend() {
 				continue
 			}
 
-			log.Printf("image.image=%#v", image.Image)
-
 			image.SetMinSize(fyne.Size{
 				Width:  thumbnailWidth,
 				Height: thumbnailHeight,

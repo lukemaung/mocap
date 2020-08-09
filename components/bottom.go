@@ -41,7 +41,6 @@ type Player struct {
 func (f *Player) On() {
 	for true {
 		if !f.IsPlaying {
-			log.Printf("idle sleep 1s")
 			time.Sleep(time.Duration(1) * time.Second)
 			continue
 		}
@@ -55,7 +54,6 @@ func (f *Player) On() {
 		AnimationBottomComponent.PreviewImageContainer.Objects[0] = AnimationBottomComponent.PreviewImage
 		AnimationBottomComponent.PreviewImage.SetMinSize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
 		AnimationBottomComponent.PreviewImageContainer.Refresh()
-		log.Printf("sleep %d ms ", f.sleepTime.Milliseconds())
 		time.Sleep(f.sleepTime)
 	}
 }
