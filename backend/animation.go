@@ -10,22 +10,22 @@ import (
 	"../util"
 )
 
-var AnimationBackend Animation
+var Backend AnimationBackend
 
 type Frame struct {
 	Filename string
 }
 
-type Animation struct {
+type AnimationBackend struct {
 	Name string
 	Frames []*Frame
 }
 
-func (f *Animation) Append(frame *Frame) {
+func (f *AnimationBackend) Append(frame *Frame) {
 	f.Frames = append(f.Frames, frame)
 }
 
-func (f *Animation) InsertAt(index int, frame *Frame) {
+func (f *AnimationBackend) InsertAt(index int, frame *Frame) {
 	log.Printf("will insert frame image %s at index %d", frame.Filename, index)
 	if len(f.Frames) == index {
 		f.Append(frame)
@@ -35,19 +35,21 @@ func (f *Animation) InsertAt(index int, frame *Frame) {
 	f.Frames[index] = frame
 }
 
-func (f *Animation) RemoveAt(index int, frame *Frame) {
-	frames := make([]*Frame, 0)
-	frames = append(frames, f.Frames[:index]...)
-	f.Frames = append(frames, f.Frames[index:+1]...)
+func (f *AnimationBackend) RemoveAt(index int) {
+	log.Printf("will delete backend frame %d/%d", index, len(f.Frames))
+
+	//frames := make([]*Frame, 0)
+	//frames = append(frames, f.Frames[:index]...)
+	f.Frames = append(f.Frames[:index], f.Frames[index+1:]...)
 }
 
-func (f *Animation) RemoveAll() {
+func (f *AnimationBackend) RemoveAll() {
 	log.Printf("clearing all frames from backend")
 	frames := make([]*Frame, 0)
 	f.Frames = frames
 }
 
-func (f *Animation) Save() error {
+func (f *AnimationBackend) Save() error {
 	log.Printf("saving %d frames into project %s", len(f.Frames), f.Name)
 
 	bytes, err := json.Marshal(f)
@@ -70,7 +72,7 @@ func (f *Animation) Save() error {
 	return ioutil.WriteFile(fullPath, bytes, os.ModePerm)
 }
 
-func (f *Animation) Load(fileName string) error {
+func (f *AnimationBackend) Load(fileName string) error {
 	log.Printf("will load project %s", fileName)
 	baseDir, err := util.GetMocapBaseDir()
 	if err != nil {
@@ -83,7 +85,7 @@ func (f *Animation) Load(fileName string) error {
 		return err
 	}
 
-	newAnimation := Animation{}
+	newAnimation := AnimationBackend{}
 	err = json.Unmarshal(fileBytes, &newAnimation)
 	if err != nil {
 		return err

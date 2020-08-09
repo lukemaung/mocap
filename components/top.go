@@ -171,7 +171,7 @@ func (s *SuperDuperProjectPanel) GetThumbNails() []fyne.Container {
 }
 
 func (c *TopComponent) Snapshot() error {
-	projectName := backend.AnimationBackend.Name
+	projectName := backend.Backend.Name
 	if projectName == "" {
 		return errors.New("create a project first before saving snapshots")
 	}
@@ -209,13 +209,13 @@ func (c *TopComponent) Snapshot() error {
 	}
 
 	cursor := AnimationFilmStripComponent.Cursor
-	if cursor == -1 || cursor == len(backend.AnimationBackend.Frames)-1 {
-		backend.AnimationBackend.Append(&backend.Frame{Filename: fullAbsImageFilePath})
+	if cursor == -1 || cursor == len(backend.Backend.Frames)-1 {
+		backend.Backend.Append(&backend.Frame{Filename: fullAbsImageFilePath})
 	} else {
-		backend.AnimationBackend.InsertAt(cursor+1, &backend.Frame{Filename: fullAbsImageFilePath})
+		backend.Backend.InsertAt(cursor+1, &backend.Frame{Filename: fullAbsImageFilePath})
 	}
 
-	backend.AnimationBackend.Save()
+	backend.Backend.Save()
 	canvas.Refresh(c.WebcamImage)
 
 	return nil
@@ -326,7 +326,7 @@ const (
 
 func ExistingProjectTapHandler(id string) error {
 	log.Printf("will load existing project %s", id)
-	err := backend.AnimationBackend.Load(id)
+	err := backend.Backend.Load(id)
 	AnimationFilmStripComponent.Tail()
 	AnimationFilmStripComponent.SyncToBackend()
 	return err
@@ -334,7 +334,7 @@ func ExistingProjectTapHandler(id string) error {
 
 func NewProjectTapHandler(name string) error {
 	log.Printf("will load new project %s", name)
-	backend.AnimationBackend.RemoveAll()
+	backend.Backend.RemoveAll()
 	AnimationFilmStripComponent.Tail()
 	AnimationFilmStripComponent.SyncToBackend()
 	return nil

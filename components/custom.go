@@ -238,9 +238,9 @@ func NewGallery(parentContainer *fyne.Container, galleryType GalleryType, baseDi
 		},
 		OnSubmit: func() {
 			log.Printf("creating new project %s", projectEntry.Text)
-			backend.AnimationBackend.Name = projectEntry.Text
-			backend.AnimationBackend.RemoveAll()
-			err := backend.AnimationBackend.Save()
+			backend.Backend.Name = projectEntry.Text
+			backend.Backend.RemoveAll()
+			err := backend.Backend.Save()
 			if err != nil {
 				log.Printf("there was an error saving creating project %s: %s", projectEntry.Text, err.Error())
 			}
@@ -276,6 +276,7 @@ type HotImage struct {
 	Selected bool
 
 	OnTap func(fileName string, ev *fyne.PointEvent)
+	OnSecondaryTap func(fileName string, ev *fyne.PointEvent)
 }
 
 func (r *HotImage) SetMinSize(size fyne.Size) {
@@ -291,15 +292,22 @@ func (r *HotImage) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (r *HotImage) Tapped(ev *fyne.PointEvent) {
-	log.Printf("tapped: %s", r.image.File)
-	r.OnTap(r.image.File, ev)
+	if r.OnTap != nil {
+		r.OnTap(r.image.File, ev)
+	}
 }
 
-func NewHotImage(fileName string, width int, height int, onTap func(string, *fyne.PointEvent)) *HotImage {
+func (r *HotImage) TappedSecondary(ev *fyne.PointEvent) {
+	if r.OnSecondaryTap != nil {
+		r.OnSecondaryTap(r.image.File, ev)
+	}
+}
+
+func NewHotImage(fileName string, width int, height int, onTap func(string, *fyne.PointEvent), onSecondaryTap func(string, *fyne.PointEvent)) *HotImage {
 	img := canvas.NewImageFromFile(fileName)
 	size := fyne.NewSize(width, height)
 	img.Resize(size)
-	r := &HotImage{image: img, min: size, OnTap: onTap}
+	r := &HotImage{image: img, min: size, OnTap: onTap, OnSecondaryTap: onSecondaryTap}
 	r.ExtendBaseWidget(r)
 	return r
 }

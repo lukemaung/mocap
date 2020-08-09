@@ -38,7 +38,7 @@ func (f *FilmStrip) Left() {
 }
 
 func (f *FilmStrip) Right() {
-	maxAllowedLeftOffset := len(backend.AnimationBackend.Frames) - thumbnailCount
+	maxAllowedLeftOffset := len(backend.Backend.Frames) - thumbnailCount
 	if maxAllowedLeftOffset < 0 {
 		maxAllowedLeftOffset = 0
 	}
@@ -49,7 +49,7 @@ func (f *FilmStrip) Right() {
 }
 
 func (f *FilmStrip) Tail() {
-	maxAllowedLeftOffset := len(backend.AnimationBackend.Frames) - thumbnailCount
+	maxAllowedLeftOffset := len(backend.Backend.Frames) - thumbnailCount
 	if maxAllowedLeftOffset < 0 {
 		maxAllowedLeftOffset = 0
 	}
@@ -58,7 +58,7 @@ func (f *FilmStrip) Tail() {
 }
 
 func (f *FilmStrip) ExclusiveSelectFrame(fileName string) {
-	for idx, frame := range backend.AnimationBackend.Frames {
+	for idx, frame := range backend.Backend.Frames {
 		if fileName == frame.Filename {
 			log.Printf("set cursor to backend frame %d, fileName: %s", idx, fileName)
 			f.Cursor = idx
@@ -79,10 +79,19 @@ func (f *FilmStrip) ExclusiveSelectFrame(fileName string) {
 	}
 }
 
+func (f *FilmStrip) DeleteFrame(fileName string) {
+	for idx, frame := range backend.Backend.Frames {
+		if fileName == frame.Filename {
+			f.Cursor = idx
+			backend.Backend.RemoveAt(f.Cursor)
+			break
+		}
+	}
+}
 func (f *FilmStrip) SyncToBackend() {
 	log.Printf("syncing with backend")
 	leftIndex := f.ViewOffset
-	rightIndex := len(backend.AnimationBackend.Frames) - 1
+	rightIndex := len(backend.Backend.Frames) - 1
 	calculatedSize := f.ViewOffset+f.ViewSize
 	if calculatedSize < rightIndex {
 		rightIndex = calculatedSize
@@ -90,11 +99,16 @@ func (f *FilmStrip) SyncToBackend() {
 	log.Printf("leftIndex=%d, calculatedSize=%d, rightIndex=%d", leftIndex, calculatedSize, rightIndex)
 	if rightIndex > 0 {
 		log.Printf("will load visible frames from backend frames")
-		for idx, frame := range backend.AnimationBackend.Frames[leftIndex:rightIndex] {
+		for idx, frame := range backend.Backend.Frames[leftIndex:rightIndex] {
 			pinnedFileName := frame.Filename
-			image := NewHotImage(frame.Filename, thumbnailWidth, thumbnailHeight, func(fileName string, event *fyne.PointEvent) {
-				f.ExclusiveSelectFrame(pinnedFileName)
-			})
+			image := NewHotImage(frame.Filename, thumbnailWidth, thumbnailHeight,
+				func(fileName string, event *fyne.PointEvent) {
+					f.ExclusiveSelectFrame(pinnedFileName)
+				},
+				func(fileName string, event *fyne.PointEvent) {
+					f.DeleteFrame(pinnedFileName)
+					f.SyncToBackend()
+				})
 			if image == nil {
 				log.Printf("error loading file %s", pinnedFileName)
 				continue

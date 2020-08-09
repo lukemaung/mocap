@@ -46,10 +46,10 @@ func (f *Player) On() {
 		}
 
 		f.frameNum++
-		if f.frameNum >= len(backend.AnimationBackend.Frames) {
+		if f.frameNum >= len(backend.Backend.Frames) {
 			f.frameNum = 0
 		}
-		fileName := backend.AnimationBackend.Frames[f.frameNum].Filename
+		fileName := backend.Backend.Frames[f.frameNum].Filename
 		AnimationBottomComponent.PreviewImage = canvas.NewImageFromFile(fileName)
 		AnimationBottomComponent.PreviewImageContainer.Objects[0] = AnimationBottomComponent.PreviewImage
 		AnimationBottomComponent.PreviewImage.SetMinSize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
