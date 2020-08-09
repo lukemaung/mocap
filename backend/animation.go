@@ -26,6 +26,7 @@ func (f *Animation) Append(frame *Frame) {
 }
 
 func (f *Animation) InsertAt(index int, frame *Frame) {
+	log.Printf("will insert frame image %s at index %d", frame.Filename, index)
 	if len(f.Frames) == index {
 		f.Append(frame)
 		return

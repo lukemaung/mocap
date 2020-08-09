@@ -208,7 +208,13 @@ func (c *TopComponent) Snapshot() error {
 		return err
 	}
 
-	backend.AnimationBackend.Append(&backend.Frame{Filename: fullAbsImageFilePath})
+	cursor := AnimationFilmStripComponent.Cursor
+	if cursor == -1 || cursor == len(backend.AnimationBackend.Frames)-1 {
+		backend.AnimationBackend.Append(&backend.Frame{Filename: fullAbsImageFilePath})
+	} else {
+		backend.AnimationBackend.InsertAt(cursor+1, &backend.Frame{Filename: fullAbsImageFilePath})
+	}
+
 	backend.AnimationBackend.Save()
 	canvas.Refresh(c.WebcamImage)
 

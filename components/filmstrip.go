@@ -57,7 +57,7 @@ func (f *FilmStrip) Tail() {
 	f.Cursor = -1
 }
 
-func (f *FilmStrip) ExclusiveToggleSelectFrame(fileName string) {
+func (f *FilmStrip) ExclusiveSelectFrame(fileName string) {
 	for idx, frame := range backend.AnimationBackend.Frames {
 		if fileName == frame.Filename {
 			log.Printf("set cursor to backend frame %d, fileName: %s", idx, fileName)
@@ -93,7 +93,7 @@ func (f *FilmStrip) SyncToBackend() {
 		for idx, frame := range backend.AnimationBackend.Frames[leftIndex:rightIndex] {
 			pinnedFileName := frame.Filename
 			image := NewHotImage(frame.Filename, thumbnailWidth, thumbnailHeight, func(fileName string, event *fyne.PointEvent) {
-				f.ExclusiveToggleSelectFrame(pinnedFileName)
+				f.ExclusiveSelectFrame(pinnedFileName)
 			})
 			if image == nil {
 				log.Printf("error loading file %s", pinnedFileName)
