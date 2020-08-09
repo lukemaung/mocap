@@ -23,9 +23,10 @@ type FilmStrip struct {
 	Container     *fyne.Container
 	FrameContainer *fyne.Container
 	VisibleFrames []fyne.CanvasObject
+
 	ViewSize int
 	ViewOffset int
-	Cursor int
+	Cursor int // -1 indicates cursor location is unset
 }
 
 func (f *FilmStrip) Left() {
@@ -33,6 +34,7 @@ func (f *FilmStrip) Left() {
 	if f.ViewOffset < 0 {
 		f.ViewOffset = 0
 	}
+	f.Cursor = -1
 }
 
 func (f *FilmStrip) Right() {
@@ -43,6 +45,7 @@ func (f *FilmStrip) Right() {
 	if f.ViewOffset < maxAllowedLeftOffset {
 		f.ViewOffset++
 	}
+	f.Cursor = -1
 }
 
 func (f *FilmStrip) Tail() {
@@ -51,6 +54,29 @@ func (f *FilmStrip) Tail() {
 		maxAllowedLeftOffset = 0
 	}
 	f.ViewOffset = maxAllowedLeftOffset
+	f.Cursor = -1
+}
+
+func (f *FilmStrip) ExclusiveToggleSelectFrame(fileName string) {
+	for idx, frame := range backend.AnimationBackend.Frames {
+		if fileName == frame.Filename {
+			log.Printf("set cursor to backend frame %d, fileName: %s", idx, fileName)
+			f.Cursor = idx
+			break
+		}
+	}
+	for idx, frame := range f.VisibleFrames {
+		switch v := frame.(type) {
+		case *HotImage:
+			if v.image.File == fileName {
+				log.Printf("exclusively selecting visible frame %d", idx)
+				v.Selected = true
+			} else {
+				v.Selected = false
+			}
+		default:
+		}
+	}
 }
 
 func (f *FilmStrip) SyncToBackend() {
@@ -65,16 +91,14 @@ func (f *FilmStrip) SyncToBackend() {
 	if rightIndex > 0 {
 		log.Printf("will load visible frames from backend frames")
 		for idx, frame := range backend.AnimationBackend.Frames[leftIndex:rightIndex] {
-			image := canvas.NewImageFromFile(frame.Filename)
+			pinnedFileName := frame.Filename
+			image := NewHotImage(frame.Filename, thumbnailWidth, thumbnailHeight, func(fileName string, event *fyne.PointEvent) {
+				f.ExclusiveToggleSelectFrame(pinnedFileName)
+			})
 			if image == nil {
-				log.Printf("error loading file %s due to: %s", frame.Filename)
+				log.Printf("error loading file %s", pinnedFileName)
 				continue
 			}
-
-			image.SetMinSize(fyne.Size{
-				Width:  thumbnailWidth,
-				Height: thumbnailHeight,
-			})
 			f.VisibleFrames[idx] = image
 		}
 	}

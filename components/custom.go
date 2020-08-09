@@ -3,9 +3,11 @@ package components
 import (
 	"fmt"
 	"fyne.io/fyne"
+	"fyne.io/fyne/canvas"
 	"fyne.io/fyne/layout"
 	"fyne.io/fyne/theme"
 	"fyne.io/fyne/widget"
+	"image/color"
 	"io/ioutil"
 	"log"
 	"os"
@@ -263,4 +265,76 @@ func NewGallery(parentContainer *fyne.Container, galleryType GalleryType, baseDi
 	galleryContainer.Container = galleryContainer.ThumbnailView
 
 	return &galleryContainer
+}
+
+
+type HotImage struct {
+	widget.BaseWidget
+
+	min   fyne.Size
+	image *canvas.Image
+	Selected bool
+
+	OnTap func(fileName string, ev *fyne.PointEvent)
+}
+
+func (r *HotImage) SetMinSize(size fyne.Size) {
+	r.Resize(size)
+}
+
+func (r *HotImage) MinSize() fyne.Size {
+	return r.min
+}
+
+func (r *HotImage) CreateRenderer() fyne.WidgetRenderer {
+	return &HotImageWidgetRenderer{hotImage: r}
+}
+
+func (r *HotImage) Tapped(ev *fyne.PointEvent) {
+	log.Printf("tapped: %s", r.image.File)
+	r.OnTap(r.image.File, ev)
+}
+
+func NewHotImage(fileName string, width int, height int, onTap func(string, *fyne.PointEvent)) *HotImage {
+	img := canvas.NewImageFromFile(fileName)
+	size := fyne.NewSize(width, height)
+	img.Resize(size)
+	r := &HotImage{image: img, min: size, OnTap: onTap}
+	r.ExtendBaseWidget(r)
+	return r
+}
+
+type HotImageWidgetRenderer struct {
+	hotImage *HotImage
+}
+
+func (r *HotImageWidgetRenderer) Layout(size fyne.Size) {
+	r.hotImage.image.Resize(size)
+}
+
+func (r *HotImageWidgetRenderer) MinSize() fyne.Size {
+	return r.MinSize()
+}
+
+func (r *HotImageWidgetRenderer) Refresh() {
+	canvas.Refresh(r.hotImage)
+}
+
+func (r *HotImageWidgetRenderer) BackgroundColor() color.Color {
+	return theme.BackgroundColor()
+}
+
+func (r *HotImageWidgetRenderer) Objects() []fyne.CanvasObject {
+	if r.hotImage.Selected {
+		rect := canvas.NewRectangle(color.White)
+		rect.StrokeColor = color.White
+		rect.StrokeWidth = 2.0
+		rect.FillColor = color.Transparent
+		rect.Resize(r.hotImage.MinSize())
+		return []fyne.CanvasObject{r.hotImage.image, rect}
+	}
+	return []fyne.CanvasObject{r.hotImage.image}
+}
+
+func (r *HotImageWidgetRenderer) Destroy() {
 }
