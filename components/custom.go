@@ -1,0 +1,266 @@
+package components
+
+import (
+	"fmt"
+	"fyne.io/fyne"
+	"fyne.io/fyne/layout"
+	"fyne.io/fyne/theme"
+	"fyne.io/fyne/widget"
+	"io/ioutil"
+	"log"
+	"os"
+	"sort"
+	"strings"
+
+	"../backend"
+)
+
+type TappableIcon struct {
+	widget.Icon
+	ID               string
+	IconTapHandler   func(id string) error
+	ButtonTapHandler func()
+}
+
+func NewTappableIcon(res fyne.Resource, label string, iconTapHandler func(id string) error) *TappableIcon {
+	icon := &TappableIcon{}
+	icon.ID = label
+	icon.ExtendBaseWidget(icon)
+	icon.SetResource(res)
+	icon.IconTapHandler = iconTapHandler
+	return icon
+}
+
+func (t *TappableIcon) Tapped(pointEvent *fyne.PointEvent) {
+	if t.IconTapHandler == nil {
+		log.Printf("warning: tap handler is not registered")
+		return
+	}
+	t.IconTapHandler(t.ID)
+}
+
+func (t *TappableIcon) TappedSecondary(_ *fyne.PointEvent) {
+}
+
+func (t *TappableIcon) MinSize() fyne.Size {
+	t.ExtendBaseWidget(t)
+	return fyne.NewSize(120,90)
+}
+
+type Gallery struct {
+	ParentContainer *fyne.Container // project tab container
+
+	Type GalleryType
+
+	ItemNames []string
+
+	Container *fyne.Container // active container
+
+	ThumbnailsPanel *fyne.Container // contains ThumbnailView
+	ThumbnailView *fyne.Container // contains Thumbnails
+	NewEntryView *fyne.Container // contains form to create new file/folder
+
+	Thumbnails []fyne.Container // part of ThumbnailView
+
+	IconTapHandler func(id string) error
+}
+
+func (s *Gallery) RegenerateThumbnails()  {
+	s.Thumbnails = make([]fyne.Container, 0)
+	for _, name := range s.ItemNames {
+		rsc, _ := fyne.LoadResourceFromPath(fmt.Sprintf(`D:\Luke\Downloads\%s.png`, name))
+		image := NewTappableIcon(rsc, name, s.IconTapHandler)
+		label := widget.NewLabel(name)
+		obj := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), image, label)
+
+		s.Thumbnails = append(s.Thumbnails, *obj)
+	}
+}
+
+func sliceContainsItem(slice []string, item string) bool {
+	for _, test := range slice {
+		if test == item {
+			return true
+		}
+	}
+	return false
+}
+
+//FIXME; sortBySecondCanvasObject
+
+func (s *Gallery) Add(fileName string) {
+	if sliceContainsItem(s.ItemNames, fileName) {
+		log.Printf("%s already exists", fileName)
+		return
+	}
+	s.ItemNames = append(s.ItemNames, fileName)
+	sort.Strings(s.ItemNames)
+
+	rsc, _ := fyne.LoadResourceFromPath(fmt.Sprintf(`D:\Luke\Downloads\%s.png`, fileName))
+	image := NewTappableIcon(rsc, fileName, s.IconTapHandler)
+	label := widget.NewLabel(fileName)
+	obj := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), image, label)
+	s.Thumbnails = append(s.Thumbnails, *obj)
+	s.ThumbnailsPanel.AddObject(obj)
+
+	//s.RegenerateThumbnails()
+}
+
+func (s *Gallery) Remove(fileName string) {
+	//delete(s.ItemNames, fileName)
+	//s.RegenerateThumbnails()
+}
+
+func (s *Gallery) OnTapNewButton() {
+	s.ActivateNewEntryInputView()
+}
+
+func (s *Gallery) ActivateThumbnailView() {
+	s.Container = s.ThumbnailView
+	s.ParentContainer.Objects = []fyne.CanvasObject{s.Container}
+	s.ParentContainer.Refresh()
+}
+
+func (s *Gallery) ActivateNewEntryInputView() {
+	s.Container = s.NewEntryView
+	s.ParentContainer.Objects = []fyne.CanvasObject{s.Container}
+	s.ParentContainer.Refresh()
+}
+
+func (s *Gallery) OnSubmitNewItem() {
+
+}
+func (s *Gallery) OnCancelNewItem() {
+
+}
+
+type GalleryType int
+const (
+	Folder GalleryType = iota
+	File
+)
+var fileExtensions = []string{ ".png", ".jpg", ".jpeg", ".gif", ".bmp" }
+
+func hasAllowedExtension(fileName string) bool{
+	for _, allowed := range fileExtensions {
+		if strings.HasSuffix(fileName, allowed) {
+			return true
+		}
+	}
+	return false
+}
+
+func NewGallery(parentContainer *fyne.Container, galleryType GalleryType, baseDir string,
+	existingProjectTapHandler func(id string) error, newProjectTapHandler func(name string) error) *Gallery {
+
+	galleryContainer := Gallery{
+		ParentContainer: parentContainer,
+		Type:            galleryType,
+		IconTapHandler:  existingProjectTapHandler,
+		ItemNames:       make([]string, 0),
+	}
+
+	fileNames := make([]string, 0)
+	switch galleryType {
+	case Folder:
+		dirs, err := ioutil.ReadDir(baseDir)
+		if err != nil {
+			log.Printf("no directories in %s", baseDir)
+			break
+		}
+		for _, dir := range dirs {
+			fileNames = append(fileNames, dir.Name())
+			galleryContainer.ItemNames = append(galleryContainer.ItemNames, dir.Name())
+		}
+
+	case File:
+		file, err := os.Open(baseDir)
+		defer file.Close()
+		if err != nil {
+			log.Printf("no directories in %s", baseDir)
+			break
+		}
+		fileInfo, err := file.Readdir(-1)
+		if err != nil {
+			log.Printf("no directories in %s", baseDir)
+			break
+		}
+		for _, fInfo := range fileInfo {
+			if hasAllowedExtension(fInfo.Name()) {
+				fileNames = append(fileNames, fInfo.Name())
+				galleryContainer.ItemNames = append(galleryContainer.ItemNames, fInfo.Name())
+			}
+		}
+	}
+	galleryContainer.RegenerateThumbnails()
+
+	fileIconCellWidth := 160
+	fileIconSize := 90
+	fileTextSize := 20
+	//verticalExtra := 4
+	thumbnailsPanel := fyne.NewContainerWithLayout(layout.NewGridWrapLayout(fyne.NewSize(fileIconCellWidth,
+		fileIconSize+theme.Padding()+fileTextSize)))
+
+	for _, obj := range galleryContainer.Thumbnails {
+		o := obj
+		thumbnailsPanel.AddObject(&o)
+	}
+	galleryContainer.ThumbnailsPanel = thumbnailsPanel
+
+	galleryContainer.IconTapHandler = existingProjectTapHandler
+
+	scrollContainer := widget.NewVScrollContainer(thumbnailsPanel)
+	scrollContainer.SetMinSize(fyne.NewSize(fileIconCellWidth*2+theme.Padding(),
+		webcamImageHeight)) // NOTE: it's critical to call SetMinSize() on containers
+
+	newButton := widget.NewButton("New", func() {
+		galleryContainer.OnTapNewButton()
+	})
+
+	thumbnailViewContainer := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), newButton, scrollContainer) // gridlayout makes sure the
+	thumbnailViewContainer.Resize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
+	galleryContainer.ThumbnailView = thumbnailViewContainer
+
+	projectEntry := widget.NewEntry()
+
+	label := "New Project Name"
+	if galleryContainer.Type != Folder {
+		label = "New Image URL"
+	}
+
+
+	newThingForm := widget.Form{
+		BaseWidget: widget.BaseWidget{},
+		Items: []*widget.FormItem{
+			{label, projectEntry},
+		},
+		OnSubmit: func() {
+			log.Printf("creating new project %s", projectEntry.Text)
+			backend.AnimationBackend.Name = projectEntry.Text
+			backend.AnimationBackend.RemoveAll()
+			err := backend.AnimationBackend.Save()
+			if err != nil {
+				log.Printf("there was an error saving creating project %s: %s", projectEntry.Text, err.Error())
+			}
+			newProjectTapHandler(projectEntry.Text)
+			galleryContainer.Add(projectEntry.Text)
+			galleryContainer.ActivateThumbnailView()
+
+		},
+		OnCancel: func() {
+			log.Printf("canceling saving of new project")
+			galleryContainer.ActivateThumbnailView()
+		},
+	}
+
+	newThingContainer := fyne.NewContainerWithLayout(layout.NewGridLayout(1), &newThingForm)
+	newThingContainer.Resize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
+
+	galleryContainer.NewEntryView = newThingContainer
+	galleryContainer.Container = newThingContainer
+	galleryContainer.Container.Hide()
+	galleryContainer.Container.Show()
+	galleryContainer.Container = galleryContainer.ThumbnailView
+
+	return &galleryContainer
+}
