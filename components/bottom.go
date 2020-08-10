@@ -114,7 +114,6 @@ func NewBottomComponent() *BottomComponent {
 	fpsSliderContainer.Resize(fyne.NewSize(60, 240))
 
 	fpsSelectEntry := widget.NewSelect([]string{"1", "6", "12", "18", "24"}, func(choice string) {
-		log.Printf("use selected choice %s", choice)
 		fps, err := strconv.Atoi(choice)
 		if err != nil {
 			log.Printf("failed Atoi(%s) due to: %s", choice, err.Error())

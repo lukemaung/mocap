@@ -7,10 +7,8 @@ import (
 	"fyne.io/fyne/widget"
 	"image/color"
 	"log"
-	"time"
 
 	"../backend"
-	"../util"
 )
 
 const (
@@ -36,6 +34,10 @@ func (f *FilmStrip) Left() {
 	if f.ViewOffset < 0 {
 		f.ViewOffset = 0
 	}
+	f.ResetCursor()
+}
+
+func (f *FilmStrip) ResetCursor() {
 	f.Cursor = -1
 }
 
@@ -47,7 +49,7 @@ func (f *FilmStrip) Right() {
 	if f.ViewOffset < maxAllowedLeftOffset {
 		f.ViewOffset++
 	}
-	f.Cursor = -1
+	f.ResetCursor()
 }
 
 func (f *FilmStrip) Tail() {
@@ -56,14 +58,16 @@ func (f *FilmStrip) Tail() {
 		maxAllowedLeftOffset = 0
 	}
 	f.ViewOffset = maxAllowedLeftOffset
-	f.Cursor = -1
+	f.ResetCursor()
 }
 
 func (f *FilmStrip) ExclusiveSelectFrame(fileName string) {
+	//log.Printf("will look for backend frame with filename %s", fileName)
 	for idx, frame := range backend.Backend.Frames {
-		if fileName == frame.Filename {
+		pinnedIdx := idx
+		if fileName == frame.ThumbnailFilename {
 			log.Printf("set cursor to backend frame %d, fileName: %s", idx, fileName)
-			f.Cursor = idx
+			f.Cursor = pinnedIdx
 			break
 		}
 	}
@@ -83,8 +87,10 @@ func (f *FilmStrip) ExclusiveSelectFrame(fileName string) {
 
 func (f *FilmStrip) DeleteFrame(fileName string) {
 	for idx, frame := range backend.Backend.Frames {
-		if fileName == frame.Filename {
-			f.Cursor = idx
+		pinnedIdx := idx
+		if fileName == frame.ThumbnailFilename {
+			log.Printf("set cursor to backend frame %d, fileName: %s", idx, fileName)
+			f.Cursor = pinnedIdx
 			backend.Backend.RemoveAt(f.Cursor)
 			break
 		}
@@ -92,7 +98,6 @@ func (f *FilmStrip) DeleteFrame(fileName string) {
 }
 
 func (f *FilmStrip) SyncToBackend() {
-	defer util.LogPerf("FilmStrip.SyncToBackend()", time.Now())
 	log.Printf("syncing with backend")
 	leftIndex := f.ViewOffset
 	rightIndex := len(backend.Backend.Frames) - 1

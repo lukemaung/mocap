@@ -220,8 +220,8 @@ func (c *TopComponent) saveImage(img *image.Image, absImageFilepath string) erro
 
 func (c *TopComponent) Snapshot() error {
 	defer util.LogPerf("TopComponent.Snapshot()", time.Now())
-	c.DisableCapture()
-	defer c.EnableCapture()
+	//c.DisableCapture()
+	//defer c.EnableCapture()
 
 	projectName := backend.Backend.Name
 	if projectName == "" {
@@ -274,6 +274,7 @@ func (c *TopComponent) Snapshot() error {
 	}
 
 	cursor := AnimationFilmStripComponent.Cursor
+	log.Printf("cursor=%d", cursor)
 	if cursor == -1 || cursor == len(backend.Backend.Frames)-1 {
 		backend.Backend.Append(&backend.Frame{Filename: fullAbsImageFilePath, ThumbnailFilename: fullThumbnailImageFilePath})
 	} else {

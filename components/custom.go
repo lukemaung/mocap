@@ -81,14 +81,12 @@ func (s *Gallery) RegenerateThumbnails() {
 
 		//absThumbnailDir := fmt.Sprintf(`%s\snapshots\.thumbnails`, absProjectDir)
 		absThumbnailDir := fmt.Sprintf(`%s\snapshots`, absProjectDir)
-		log.Printf("DEBUG: the right filename used for thumbnail is %s", absThumbnailDir)
 		outputDirRead, _ := os.Open(absThumbnailDir)
 		outputDirFiles, _ := outputDirRead.Readdir(0)
 
 		var image fyne.CanvasObject
 		if len(outputDirFiles) > 0 {
 			for _, fileOrdir := range outputDirFiles {
-				log.Printf("analyzing %s", fileOrdir.Name())
 				if !fileOrdir.IsDir() {
 					absThumbnailFilePath := fmt.Sprintf(`%s\%s`, absThumbnailDir, fileOrdir.Name())
 					rsc, _ := fyne.LoadResourceFromPath(absThumbnailFilePath)

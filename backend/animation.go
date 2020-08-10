@@ -24,6 +24,7 @@ type AnimationBackend struct {
 }
 
 func (f *AnimationBackend) Append(frame *Frame) {
+	log.Printf("will insert at the end of %d frames", len(f.Frames))
 	f.Frames = append(f.Frames, frame)
 }
 
