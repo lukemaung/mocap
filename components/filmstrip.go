@@ -83,6 +83,14 @@ func (f *FilmStrip) ExclusiveSelectFrame(fileName string) {
 		default:
 		}
 	}
+
+	if f.Cursor >= 0 {
+		fileName := backend.Backend.Frames[f.Cursor].Filename
+		AnimationBottomComponent.PreviewImage = canvas.NewImageFromFile(fileName)
+		AnimationBottomComponent.PreviewImageContainer.Objects[0] = AnimationBottomComponent.PreviewImage
+		AnimationBottomComponent.PreviewImage.SetMinSize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
+		AnimationBottomComponent.PreviewImageContainer.Refresh()
+	}
 }
 
 func (f *FilmStrip) DeleteFrame(fileName string) {
