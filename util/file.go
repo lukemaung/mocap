@@ -2,7 +2,9 @@ package util
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"time"
 
 	"../config"
 )
@@ -21,11 +23,15 @@ func MkRelativeDir(dirName string) error {
 	return nil
 }
 
-func GetMocapBaseDir() (string, error){
+func GetMocapBaseDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("can't get user home dir due to: %s", err)
 	}
-	absBaseDir := fmt.Sprintf(`%s\%s`, homeDir,  config.MocapDir)
+	absBaseDir := fmt.Sprintf(`%s\%s`, homeDir, config.MocapDir)
 	return absBaseDir, nil
+}
+
+func LogPerf(logMessage string, startTime time.Time) {
+	log.Printf("perf: %s took %d ms", logMessage, time.Since(startTime).Milliseconds())
 }

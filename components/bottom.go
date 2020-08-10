@@ -19,23 +19,23 @@ var AnimationBottomComponent *BottomComponent
 
 type BottomComponent struct {
 	// root container
-	Container *fyne.Container
+	Container             *fyne.Container
 	PreviewImageContainer *fyne.Container
-	PreviewImage *canvas.Image
-	Player *Player
+	PreviewImage          *canvas.Image
+	Player                *Player
 }
 
 const (
 	defaultFps = 12
-	maxFps = 24
+	maxFps     = 24
 )
 
 type Player struct {
-	Ticker *time.Ticker
-	Fps int
+	Ticker    *time.Ticker
+	Fps       int
 	IsPlaying bool
 	sleepTime time.Duration
-	frameNum int
+	frameNum  int
 }
 
 func (f *Player) On() {
@@ -72,7 +72,7 @@ func (f *Player) Rewind() {
 
 func (f *Player) SetFPS(fps int) {
 	f.Fps = fps
-	t := 1000000/fps
+	t := 1000000 / fps
 	f.sleepTime = time.Duration(t) * time.Microsecond
 }
 
@@ -90,8 +90,8 @@ func NewBottomComponent() *BottomComponent {
 
 	component := BottomComponent{
 		PreviewImageContainer: previewImageContainer,
-		PreviewImage: previewImage,
-		Player: NewPlayer(),
+		PreviewImage:          previewImage,
+		Player:                NewPlayer(),
 	}
 
 	toolbarLayout := layout.NewVBoxLayout()
@@ -107,7 +107,7 @@ func NewBottomComponent() *BottomComponent {
 	fpsSlider.Value = defaultFps
 	fpsSlider.Orientation = widget.Horizontal
 	fpsSliderContainer := fyne.NewContainerWithLayout(layout.NewCenterLayout(), fpsSlider)
-	fpsSliderContainer.Resize(fyne.NewSize(60,240))
+	fpsSliderContainer.Resize(fyne.NewSize(60, 240))
 
 	fpsSelectEntry := widget.NewSelect([]string{"1", "6", "12", "18", "24"}, func(choice string) {
 		log.Printf("use selected choice %s", choice)

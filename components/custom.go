@@ -46,7 +46,7 @@ func (t *TappableIcon) TappedSecondary(_ *fyne.PointEvent) {
 
 func (t *TappableIcon) MinSize() fyne.Size {
 	t.ExtendBaseWidget(t)
-	return fyne.NewSize(120,90)
+	return fyne.NewSize(120, 90)
 }
 
 type Gallery struct {
@@ -59,15 +59,15 @@ type Gallery struct {
 	Container *fyne.Container // active container
 
 	ThumbnailsPanel *fyne.Container // contains ThumbnailView
-	ThumbnailView *fyne.Container // contains Thumbnails
-	NewEntryView *fyne.Container // contains form to create new file/folder
+	ThumbnailView   *fyne.Container // contains Thumbnails
+	NewEntryView    *fyne.Container // contains form to create new file/folder
 
 	Thumbnails []fyne.Container // part of ThumbnailView
 
 	IconTapHandler func(id string) error
 }
 
-func (s *Gallery) RegenerateThumbnails()  {
+func (s *Gallery) RegenerateThumbnails() {
 	s.Thumbnails = make([]fyne.Container, 0)
 	for _, name := range s.ItemNames {
 		rsc, _ := fyne.LoadResourceFromPath(fmt.Sprintf(`D:\Luke\Downloads\%s.png`, name))
@@ -137,13 +137,15 @@ func (s *Gallery) OnCancelNewItem() {
 }
 
 type GalleryType int
+
 const (
 	Folder GalleryType = iota
 	File
 )
-var fileExtensions = []string{ ".png", ".jpg", ".jpeg", ".gif", ".bmp" }
 
-func hasAllowedExtension(fileName string) bool{
+var fileExtensions = []string{".png", ".jpg", ".jpeg", ".gif", ".bmp"}
+
+func hasAllowedExtension(fileName string) bool {
 	for _, allowed := range fileExtensions {
 		if strings.HasSuffix(fileName, allowed) {
 			return true
@@ -230,7 +232,6 @@ func NewGallery(parentContainer *fyne.Container, galleryType GalleryType, baseDi
 		label = "New Image URL"
 	}
 
-
 	newThingForm := widget.Form{
 		BaseWidget: widget.BaseWidget{},
 		Items: []*widget.FormItem{
@@ -267,15 +268,14 @@ func NewGallery(parentContainer *fyne.Container, galleryType GalleryType, baseDi
 	return &galleryContainer
 }
 
-
 type HotImage struct {
 	widget.BaseWidget
 
-	min   fyne.Size
-	image *canvas.Image
+	min      fyne.Size
+	image    *canvas.Image
 	Selected bool
 
-	OnTap func(fileName string, ev *fyne.PointEvent)
+	OnTap          func(fileName string, ev *fyne.PointEvent)
 	OnSecondaryTap func(fileName string, ev *fyne.PointEvent)
 }
 
@@ -303,10 +303,12 @@ func (r *HotImage) TappedSecondary(ev *fyne.PointEvent) {
 	}
 }
 
-func NewHotImage(fileName string, width int, height int, onTap func(string, *fyne.PointEvent), onSecondaryTap func(string, *fyne.PointEvent)) *HotImage {
+func NewHotImage(fileName string, forceResize bool, width int, height int, onTap func(string, *fyne.PointEvent), onSecondaryTap func(string, *fyne.PointEvent)) *HotImage {
 	img := canvas.NewImageFromFile(fileName)
 	size := fyne.NewSize(width, height)
-	img.Resize(size)
+	if forceResize {
+		img.Resize(size)
+	}
 	r := &HotImage{image: img, min: size, OnTap: onTap, OnSecondaryTap: onSecondaryTap}
 	r.ExtendBaseWidget(r)
 	return r

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 
 	"../util"
 )
@@ -13,11 +14,12 @@ import (
 var Backend AnimationBackend
 
 type Frame struct {
-	Filename string
+	Filename          string
+	ThumbnailFilename string
 }
 
 type AnimationBackend struct {
-	Name string
+	Name   string
 	Frames []*Frame
 }
 
@@ -37,9 +39,6 @@ func (f *AnimationBackend) InsertAt(index int, frame *Frame) {
 
 func (f *AnimationBackend) RemoveAt(index int) {
 	log.Printf("will delete backend frame %d/%d", index, len(f.Frames))
-
-	//frames := make([]*Frame, 0)
-	//frames = append(frames, f.Frames[:index]...)
 	f.Frames = append(f.Frames[:index], f.Frames[index+1:]...)
 }
 
@@ -50,6 +49,7 @@ func (f *AnimationBackend) RemoveAll() {
 }
 
 func (f *AnimationBackend) Save() error {
+	defer util.LogPerf("AnimationBackend.Save()", time.Now())
 	log.Printf("saving %d frames into project %s", len(f.Frames), f.Name)
 
 	bytes, err := json.Marshal(f)
@@ -67,12 +67,13 @@ func (f *AnimationBackend) Save() error {
 		return err
 	}
 
-	fullPath := fmt.Sprintf(`%s\%s\animation.json`,baseDir, f.Name)
+	fullPath := fmt.Sprintf(`%s\%s\animation.json`, baseDir, f.Name)
 	log.Printf("about to write file %s", fullPath)
 	return ioutil.WriteFile(fullPath, bytes, os.ModePerm)
 }
 
 func (f *AnimationBackend) Load(fileName string) error {
+	defer util.LogPerf("AnimationBackend.Load()", time.Now())
 	log.Printf("will load project %s", fileName)
 	baseDir, err := util.GetMocapBaseDir()
 	if err != nil {

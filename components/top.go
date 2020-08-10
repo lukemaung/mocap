@@ -10,11 +10,11 @@ import (
 	"fyne.io/fyne/layout"
 	"fyne.io/fyne/storage"
 	"fyne.io/fyne/widget"
+	"github.com/amarburg/go-fast-png"
 	"github.com/google/uuid"
 	"gocv.io/x/gocv"
 	"image"
 	"image/color"
-	"image/png"
 	"log"
 	"math"
 	"os"
@@ -33,24 +33,25 @@ type TopComponent struct {
 	Container *fyne.Container
 
 	// camera
-	Webcam   *gocv.VideoCapture
-	WebcamImage *canvas.Image
+	Webcam              *gocv.VideoCapture
+	WebcamImage         *canvas.Image
+	EnableWebcamCapture bool
 
 	// contextual panel
 	ContextPane *fyne.Container
 
-	ProjectPanel *Gallery
-	ChromaPanel *ChromaPanel
+	ProjectPanel    *Gallery
+	ChromaPanel     *ChromaPanel
 	BackgroundPanel *BackgroundPanel
 }
 
 type ChromaPanel struct {
 	Check *widget.Check
 
-	RedSlider *widget.Slider
+	RedSlider   *widget.Slider
 	GreenSlider *widget.Slider
-	BlueSlider *widget.Slider
-	FuzzSlider *widget.Slider
+	BlueSlider  *widget.Slider
+	FuzzSlider  *widget.Slider
 
 	PreviewColor *canvas.Rectangle
 
@@ -68,9 +69,9 @@ func (c *ChromaPanel) GetChromaKey() color.Color {
 }
 
 type BackgroundPanel struct {
-	Container *fyne.Container
-	BackgroundImageMat *gocv.Mat
-	BackgroundImage *canvas.Image
+	Container            *fyne.Container
+	BackgroundImageMat   *gocv.Mat
+	BackgroundImage      *canvas.Image
 	BackgroundResizedHsv *gocv.Mat
 }
 
@@ -137,20 +138,21 @@ func NewBackgroundPanel() *BackgroundPanel {
 	panelLayout := layout.NewVBoxLayout()
 	backgroundPanel.BackgroundImage.SetMinSize(fyne.NewSize(480, 270))
 	backgroundPanel.GenerateResizedBackground()
-	panelLayout.Layout([]fyne.CanvasObject{loadButton, backgroundPanel.BackgroundImage}, fyne.NewSize(480,300))
+	panelLayout.Layout([]fyne.CanvasObject{loadButton, backgroundPanel.BackgroundImage}, fyne.NewSize(480, 300))
 	container := fyne.NewContainerWithLayout(panelLayout, loadButton, backgroundPanel.BackgroundImage)
 	backgroundPanel.Container = container
 
 	return &backgroundPanel
 }
 
-type SuperDuperProjectPanel struct {
+type ProjectPanel struct {
 	ProjectNames *[]string
 
 	Container *fyne.Container
 }
 
-func (s *SuperDuperProjectPanel) GetThumbNails() []fyne.Container {
+func (s *ProjectPanel) GetThumbNails() []fyne.Container {
+	defer util.LogPerf("ProjectPanel.Snapshot()", time.Now())
 	objs := make([]fyne.Container, 0)
 	for _, name := range *s.ProjectNames {
 		nameFixed := name
@@ -169,17 +171,75 @@ func (s *SuperDuperProjectPanel) GetThumbNails() []fyne.Container {
 	}
 	return objs
 }
+func (c *TopComponent) EnableCapture() {
+	log.Printf("enable webcam capture")
+	c.EnableWebcamCapture = true
+}
+
+func (c *TopComponent) DisableCapture() {
+	//log.Printf("disable webcam capture")
+	//c.EnableWebcamCapture = false
+}
+
+func (c *TopComponent) saveCanvasImage(canvasImage *canvas.Image, absImageFilepath string) (*image.Image, error) {
+	imageFile, err := os.Create(absImageFilepath)
+	if err != nil {
+		return nil, err
+	}
+	defer imageFile.Close()
+
+	imageBytes := canvasImage.Resource.Content()
+	img, _, err := image.Decode(bytes.NewReader(imageBytes))
+	if err != nil {
+		return nil, err
+	}
+	encoder := fastpng.Encoder{
+		CompressionLevel: fastpng.BestSpeed,
+	}
+	err = encoder.Encode(imageFile, img)
+	if err != nil {
+		return nil, err
+	}
+
+	return &img, nil
+}
+
+func (c *TopComponent) saveImage(img *image.Image, absImageFilepath string) error {
+	imageFile, err := os.Create(absImageFilepath)
+	if err != nil {
+		return err
+	}
+	defer imageFile.Close()
+
+	encoder := fastpng.Encoder{
+		CompressionLevel: fastpng.BestSpeed,
+	}
+
+	return encoder.Encode(imageFile, *img)
+}
 
 func (c *TopComponent) Snapshot() error {
+	defer util.LogPerf("TopComponent.Snapshot()", time.Now())
+	c.DisableCapture()
+	defer c.EnableCapture()
+
 	projectName := backend.Backend.Name
 	if projectName == "" {
 		return errors.New("create a project first before saving snapshots")
 	}
+
 	snapshotDir := fmt.Sprintf(`%s\snapshots`, projectName)
 	err := util.MkRelativeDir(snapshotDir)
 	if err != nil {
 		return err
 	}
+
+	snapshotThumbnailDir := fmt.Sprintf(`%s\snapshots\.thumbnails`, projectName)
+	err = util.MkRelativeDir(snapshotThumbnailDir)
+	if err != nil {
+		return err
+	}
+
 	newUUID, err := uuid.NewUUID()
 	if err != nil {
 		return err
@@ -191,28 +251,33 @@ func (c *TopComponent) Snapshot() error {
 	}
 
 	fullAbsImageFilePath := fmt.Sprintf(`%s\%s\%s.png`, baseDir, snapshotDir, newUUID.String())
-	log.Printf("about to create file %s", fullAbsImageFilePath)
-	imageFile, err := os.Create(fullAbsImageFilePath)
-	if err != nil {
-		return err
-	}
-	defer imageFile.Close()
+	fullThumbnailImageFilePath := fmt.Sprintf(`%s\%s\%s.png`, baseDir, snapshotThumbnailDir, newUUID.String())
 
-	imageBytes := c.WebcamImage.Resource.Content()
-	img, _, err := image.Decode(bytes.NewReader(imageBytes))
+	img, err := c.saveCanvasImage(c.WebcamImage, fullAbsImageFilePath)
 	if err != nil {
 		return err
 	}
-	err = png.Encode(imageFile, img)
+	srcMat, err := gocv.ImageToMatRGB(*img)
+	if err != nil {
+		return err
+	}
+	defer srcMat.Close()
+
+	thumbnailMat := gocv.NewMat()
+	defer thumbnailMat.Close()
+
+	gocv.Resize(srcMat, &thumbnailMat, image.Pt(thumbnailWidth, thumbnailHeight), 0, 0, gocv.InterpolationLinear)
+	thumbnailImage, err := thumbnailMat.ToImage()
+	err = c.saveImage(&thumbnailImage, fullThumbnailImageFilePath)
 	if err != nil {
 		return err
 	}
 
 	cursor := AnimationFilmStripComponent.Cursor
 	if cursor == -1 || cursor == len(backend.Backend.Frames)-1 {
-		backend.Backend.Append(&backend.Frame{Filename: fullAbsImageFilePath})
+		backend.Backend.Append(&backend.Frame{Filename: fullAbsImageFilePath, ThumbnailFilename: fullThumbnailImageFilePath})
 	} else {
-		backend.Backend.InsertAt(cursor+1, &backend.Frame{Filename: fullAbsImageFilePath})
+		backend.Backend.InsertAt(cursor+1, &backend.Frame{Filename: fullAbsImageFilePath, ThumbnailFilename: fullThumbnailImageFilePath})
 	}
 
 	backend.Backend.Save()
@@ -244,20 +309,28 @@ func (c *TopComponent) CaptureLoop() {
 	defer sourceMat.Close()
 
 	for {
+		//startTime := time.Now()
+		if !c.EnableWebcamCapture {
+			time.Sleep(time.Duration(captureLoopSleepTime) * time.Millisecond)
+			continue
+		}
+
 		if ok := c.Webcam.Read(&sourceMat); !ok {
 			log.Printf("Device closed")
 			return
 		}
+
 		if sourceMat.Empty() {
 			continue
 		}
 
 		if !c.ChromaPanel.Check.Checked {
-			buf, err := gocv.IMEncode(".png", sourceMat)
+			//newStartTime := time.Now()
+			buf, err := gocv.IMEncode(gocv.PNGFileExt, sourceMat)
 			if err != nil {
 				log.Printf("error: %s", err.Error())
 			}
-
+			//log.Printf("IMEncode took %d ms", time.Since(newStartTime).Milliseconds())
 			c.WebcamImage.Resource = fyne.NewStaticResource("webcam", buf)
 		} else {
 			// image processing should use HSV
@@ -284,7 +357,7 @@ func (c *TopComponent) CaptureLoop() {
 			captureResult := gocv.NewMat()
 			backgroundResult := gocv.NewMat()
 
-			gocv.BitwiseAndWithMask(sourceHsv, sourceHsv, &captureResult, inverseMask) // green screened region deleted
+			gocv.BitwiseAndWithMask(sourceHsv, sourceHsv, &captureResult, inverseMask)                                                         // green screened region deleted
 			gocv.BitwiseAndWithMask(*c.BackgroundPanel.BackgroundResizedHsv, *c.BackgroundPanel.BackgroundResizedHsv, &backgroundResult, mask) // green screened region remains
 			gocv.Add(backgroundResult, captureResult, &final)
 
@@ -292,7 +365,7 @@ func (c *TopComponent) CaptureLoop() {
 			gocv.CvtColor(final, &final, gocv.ColorHSVToBGR)
 
 			// encode the final into png
-			buf, err := gocv.IMEncode(".png", final)
+			buf, err := gocv.IMEncode(gocv.PNGFileExt, final)
 			if err != nil {
 				log.Printf("error: %s", err.Error())
 			}
@@ -315,16 +388,19 @@ func (c *TopComponent) CaptureLoop() {
 		}
 
 		canvas.Refresh(c.WebcamImage)
-		time.Sleep(time.Duration(100) * time.Millisecond)
+		//log.Printf("captureloop iteration took %d ms", time.Since(startTime).Milliseconds())
+		time.Sleep(time.Duration(captureLoopSleepTime) * time.Millisecond)
 	}
 }
 
 const (
-	webcamImageWidth = 640
-	webcamImageHeight = 360
+	captureLoopSleepTime = 100
+	webcamImageWidth     = 640
+	webcamImageHeight    = 360
 )
 
 func ExistingProjectTapHandler(id string) error {
+	defer util.LogPerf("ExistingProjectTapHandler()", time.Now())
 	log.Printf("will load existing project %s", id)
 	err := backend.Backend.Load(id)
 	AnimationFilmStripComponent.Tail()
@@ -333,6 +409,7 @@ func ExistingProjectTapHandler(id string) error {
 }
 
 func NewProjectTapHandler(name string) error {
+	defer util.LogPerf("NewProjectTapHandler()", time.Now())
 	log.Printf("will load new project %s", name)
 	backend.Backend.RemoveAll()
 	AnimationFilmStripComponent.Tail()
@@ -345,7 +422,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	webcamImage.SetMinSize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
 
 	component := TopComponent{
-		Webcam: webcam,
+		Webcam:      webcam,
 		WebcamImage: &webcamImage,
 	}
 
@@ -357,7 +434,6 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 		}
 		AnimationFilmStripComponent.Tail()
 		AnimationFilmStripComponent.SyncToBackend()
-		//TODO: update the filmstrip using c.WebcamImage
 	})
 	leftContainer := fyne.NewContainerWithLayout(leftLayout, &webcamImage, snapshotButton)
 
@@ -373,7 +449,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 		|   | projectPanel.Container
 	    |   |                     |--- ThumbnailView, or
 		|	|					  |--- NewItemInputForm
-	 */
+	*/
 	projectTabContent := fyne.NewContainer()
 	projectPanel := NewGallery(projectTabContent, Folder, absBaseDir, ExistingProjectTapHandler, NewProjectTapHandler)
 	projectTabContent.AddObject(projectPanel.Container)
@@ -384,7 +460,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	component.ContextPane = fyne.NewContainerWithLayout(rightLayout)
 
 	chromaPanel := ChromaPanel{
-		Check:       widget.NewCheck("Enable", func(flag bool) {
+		Check: widget.NewCheck("Enable", func(flag bool) {
 			log.Printf("flag=%v", flag)
 		}),
 		RedSlider:   widget.NewSlider(0, 255),
@@ -449,13 +525,13 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 		Content: backgroundTabContent,
 	})
 
-
-
 	rootLayout := layout.NewHBoxLayout()
-	rootLayout.Layout([]fyne.CanvasObject{leftContainer, tabContainer}, fyne.NewSize(1280,webcamImageHeight))
+	rootLayout.Layout([]fyne.CanvasObject{leftContainer, tabContainer}, fyne.NewSize(1280, webcamImageHeight))
 	rootContainer := fyne.NewContainerWithLayout(rootLayout, leftContainer, tabContainer)
 
 	component.Container = rootContainer
+
+	component.EnableCapture()
 
 	return &component
 }

@@ -14,17 +14,15 @@ import (
 			ChromaPanel
 			BackgroundPanel
 
- */
-
-
+*/
 
 type MocapAppWindow struct {
-	Window *fyne.Window
+	Window       *fyne.Window
 	TopComponent *fyne.Container
 	MidCompoment *fyne.Container
 }
 
-func NewMocapAppWindow(mocapApp fyne.App, webcam *gocv.VideoCapture) *MocapAppWindow{
+func NewMocapAppWindow(mocapApp fyne.App, webcam *gocv.VideoCapture) *MocapAppWindow {
 	mocapAppWindow := MocapAppWindow{}
 
 	appWindow := mocapApp.NewWindow("Mocap Animation")

@@ -2,6 +2,7 @@ package main
 
 import (
 	"../components"
+	"flag"
 	"fmt"
 	"fyne.io/fyne"
 	"fyne.io/fyne/app"
@@ -11,10 +12,11 @@ import (
 	"gocv.io/x/gocv"
 	_ "image/png"
 	"log"
+	"os"
+	"runtime/pprof"
 
 	"../util"
 )
-
 
 var (
 	deviceID int
@@ -22,9 +24,9 @@ var (
 )
 
 type Mocap struct {
-	webcam   *gocv.VideoCapture
+	webcam      *gocv.VideoCapture
 	webcamImage *canvas.Image
-	container *fyne.Container
+	container   *fyne.Container
 }
 
 func startApp() {
@@ -90,7 +92,20 @@ func testForm() {
 	myWindow.SetContent(f)
 	myWindow.ShowAndRun()
 }
+
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 func main() {
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	//startFoo()
 	startApp()
 	//testApp()

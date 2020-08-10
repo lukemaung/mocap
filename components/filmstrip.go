@@ -7,26 +7,28 @@ import (
 	"fyne.io/fyne/widget"
 	"image/color"
 	"log"
+	"time"
 
 	"../backend"
+	"../util"
 )
 
 const (
-	thumbnailWidth = 80
+	thumbnailWidth  = 80
 	thumbnailHeight = 45
-	thumbnailCount = 16
+	thumbnailCount  = 16
 )
 
 var AnimationFilmStripComponent *FilmStrip
 
 type FilmStrip struct {
-	Container     *fyne.Container
+	Container      *fyne.Container
 	FrameContainer *fyne.Container
-	VisibleFrames []fyne.CanvasObject
+	VisibleFrames  []fyne.CanvasObject
 
-	ViewSize int
+	ViewSize   int
 	ViewOffset int
-	Cursor int // -1 indicates cursor location is unset
+	Cursor     int // -1 indicates cursor location is unset
 }
 
 func (f *FilmStrip) Left() {
@@ -88,20 +90,23 @@ func (f *FilmStrip) DeleteFrame(fileName string) {
 		}
 	}
 }
+
 func (f *FilmStrip) SyncToBackend() {
+	defer util.LogPerf("FilmStrip.SyncToBackend()", time.Now())
 	log.Printf("syncing with backend")
 	leftIndex := f.ViewOffset
 	rightIndex := len(backend.Backend.Frames) - 1
-	calculatedSize := f.ViewOffset+f.ViewSize
+	calculatedSize := f.ViewOffset + f.ViewSize
 	if calculatedSize < rightIndex {
 		rightIndex = calculatedSize
 	}
 	log.Printf("leftIndex=%d, calculatedSize=%d, rightIndex=%d", leftIndex, calculatedSize, rightIndex)
 	if rightIndex > 0 {
-		log.Printf("will load visible frames from backend frames")
+		//log.Printf("will load visible frames from backend frames")
 		for idx, frame := range backend.Backend.Frames[leftIndex:rightIndex] {
-			pinnedFileName := frame.Filename
-			image := NewHotImage(frame.Filename, thumbnailWidth, thumbnailHeight,
+			pinnedFileName := frame.ThumbnailFilename
+			pinnedThumbnailName := frame.ThumbnailFilename
+			image := NewHotImage(pinnedThumbnailName, false, thumbnailWidth, thumbnailHeight,
 				func(fileName string, event *fyne.PointEvent) {
 					f.ExclusiveSelectFrame(pinnedFileName)
 				},
@@ -118,12 +123,12 @@ func (f *FilmStrip) SyncToBackend() {
 	}
 
 	if rightIndex < thumbnailCount {
-		log.Printf("will insert white rects to unused visible frames")
+		//log.Printf("will insert white rects to unused visible frames")
 		startIndex := rightIndex
 		if startIndex < 0 {
 			startIndex = 0
 		}
-		for idx := startIndex; idx < thumbnailCount; idx ++ {
+		for idx := startIndex; idx < thumbnailCount; idx++ {
 			if idx >= 0 {
 				rect := canvas.NewRectangle(color.White)
 				rect.SetMinSize(fyne.Size{
@@ -152,7 +157,7 @@ func NewFilmStripComponent() *FilmStrip {
 
 	filmstrip := FilmStrip{
 		VisibleFrames: frames,
-		ViewSize: thumbnailCount,
+		ViewSize:      thumbnailCount,
 	}
 
 	leftButton := widget.NewButton("<", func() {
@@ -172,7 +177,7 @@ func NewFilmStripComponent() *FilmStrip {
 	items = append(items, leftButton)
 	items = append(items, frameContainer)
 	items = append(items, rightButton)
-	rootLayout.Layout(items, fyne.NewSize(1280,360))
+	rootLayout.Layout(items, fyne.NewSize(1280, 360))
 	rootContainer := fyne.NewContainerWithLayout(rootLayout, items...)
 	filmstrip.Container = rootContainer
 
