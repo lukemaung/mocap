@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/canvas"
 	"fyne.io/fyne/layout"
 	"fyne.io/fyne/widget"
+	"gocv.io/x/gocv"
 	"log"
 	"strconv"
 	"time"
@@ -13,6 +14,7 @@ import (
 	_ "image/png"
 
 	"../backend"
+	"../util"
 )
 
 var AnimationBottomComponent *BottomComponent
@@ -72,6 +74,36 @@ func (f *Player) Rewind() {
 
 func (f *Player) GenerateVideo() {
 	log.Printf("todo: generate video")
+	baseDir, err := util.GetMocapBaseDir()
+	if err != nil {
+		log.Printf("error getting basedir: %s", err.Error())
+		return
+	}
+	absPath := fmt.Sprintf(`%s\%s\%s.mp4`, baseDir, backend.Backend.Name, backend.Backend.Name)
+	vw, err := gocv.VideoWriterFile(absPath, "mp4v", float64(f.Fps),1280.0, 720.0, true)
+	if err != nil {
+		log.Printf("error getting video writer: %s", err.Error())
+		return
+	}
+	log.Printf("video file=%s", absPath)
+	defer vw.Close()
+	for idx, frame := range backend.Backend.Frames {
+		srcMat := gocv.IMRead(frame.Filename, gocv.IMReadColor)
+		if srcMat.Empty() {
+			log.Printf("couldn't read frame from %s", frame.Filename)
+			continue
+		}
+		log.Printf("writing %dx%d frame %d", srcMat.Size()[1], srcMat.Size()[0], idx)
+		err = vw.Write(srcMat)
+		if err != nil {
+			log.Printf("error writing frame: %s", err.Error())
+		}
+		err = srcMat.Close()
+		if err != nil {
+			log.Printf("error closing frame: %s", err.Error())
+		}
+	}
+
 }
 
 func (f *Player) SetFPS(fps int) {
