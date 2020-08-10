@@ -70,6 +70,10 @@ func (f *Player) Rewind() {
 	f.frameNum = 0
 }
 
+func (f *Player) GenerateVideo() {
+	log.Printf("todo: generate video")
+}
+
 func (f *Player) SetFPS(fps int) {
 	f.Fps = fps
 	t := 1000000 / fps
@@ -137,7 +141,11 @@ func NewBottomComponent() *BottomComponent {
 		component.Player.Rewind()
 	})
 
-	toolbarContainer := fyne.NewContainerWithLayout(toolbarLayout, playButton, stopButton, rewindButton, fpsSelectEntry, fpsLabelContainer)
+	generateVideoButton := widget.NewButton("Generate", func() {
+		log.Printf("generate button clicked")
+		component.Player.GenerateVideo()
+	})
+	toolbarContainer := fyne.NewContainerWithLayout(toolbarLayout, playButton, stopButton, rewindButton, fpsSelectEntry, fpsLabelContainer, generateVideoButton)
 
 	rootLayout := layout.NewHBoxLayout()
 

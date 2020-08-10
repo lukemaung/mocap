@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"../backend"
+	"../util"
 )
 
 type TappableIcon struct {
@@ -69,9 +70,38 @@ type Gallery struct {
 
 func (s *Gallery) RegenerateThumbnails() {
 	s.Thumbnails = make([]fyne.Container, 0)
+	baseDir, err := util.GetMocapBaseDir()
+	if err != nil {
+		log.Printf("argh")
+		return
+	}
+
 	for _, name := range s.ItemNames {
-		rsc, _ := fyne.LoadResourceFromPath(fmt.Sprintf(`D:\Luke\Downloads\%s.png`, name))
-		image := NewTappableIcon(rsc, name, s.IconTapHandler)
+		absProjectDir := fmt.Sprintf(`%s\%s`, baseDir, name)
+
+		//absThumbnailDir := fmt.Sprintf(`%s\snapshots\.thumbnails`, absProjectDir)
+		absThumbnailDir := fmt.Sprintf(`%s\snapshots`, absProjectDir)
+		log.Printf("DEBUG: the right filename used for thumbnail is %s", absThumbnailDir)
+		outputDirRead, _ := os.Open(absThumbnailDir)
+		outputDirFiles, _ := outputDirRead.Readdir(0)
+
+		var image fyne.CanvasObject
+		if len(outputDirFiles) > 0 {
+			for _, fileOrdir := range outputDirFiles {
+				log.Printf("analyzing %s", fileOrdir.Name())
+				if !fileOrdir.IsDir() {
+					absThumbnailFilePath := fmt.Sprintf(`%s\%s`, absThumbnailDir, fileOrdir.Name())
+					rsc, _ := fyne.LoadResourceFromPath(absThumbnailFilePath)
+					image = NewTappableIcon(rsc, name, s.IconTapHandler)
+					break
+				}
+			}
+		}
+
+		if image == nil {
+			image = canvas.NewRectangle(color.White)
+		}
+
 		label := widget.NewLabel(name)
 		obj := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), image, label)
 
