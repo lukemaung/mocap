@@ -29,13 +29,14 @@ var AnimationTopComponent *TopComponent
 type TopComponent struct {
 	Toolbar *Toolbar
 
+	CaptureMode CaptureMode
+
 	// root container
 	Container *fyne.Container
 
 	// camera
-	Webcam              *gocv.VideoCapture
-	WebcamImage         *canvas.Image
-	EnableWebcamCapture bool
+	Webcam      *gocv.VideoCapture
+	WebcamImage *canvas.Image
 
 	// contextual panel
 	ContextPane *fyne.Container
@@ -171,15 +172,6 @@ func (s *ProjectPanel) GetThumbNails() []fyne.Container {
 	}
 	return objs
 }
-func (c *TopComponent) EnableCapture() {
-	log.Printf("enable webcam capture")
-	c.EnableWebcamCapture = true
-}
-
-func (c *TopComponent) DisableCapture() {
-	//log.Printf("disable webcam capture")
-	//c.EnableWebcamCapture = false
-}
 
 func (c *TopComponent) saveCanvasImage(canvasImage *canvas.Image, absImageFilepath string) (*image.Image, error) {
 	imageFile, err := os.Create(absImageFilepath)
@@ -287,6 +279,19 @@ func (c *TopComponent) Snapshot() error {
 	return nil
 }
 
+func (c *TopComponent) SetCaptureMode(mode CaptureMode) {
+	c.CaptureMode = mode
+}
+
+func (c *TopComponent) ReadWebCam(sourceMat *gocv.Mat) bool {
+	ok := c.Webcam.Read(sourceMat)
+	if !ok {
+		return false
+	}
+
+	return !sourceMat.Empty()
+}
+
 func (c *TopComponent) CaptureLoop() {
 	sourceMat := gocv.NewMat()
 	if ok := c.Webcam.Read(&sourceMat); !ok {
@@ -311,21 +316,17 @@ func (c *TopComponent) CaptureLoop() {
 
 	for {
 		//startTime := time.Now()
-		if !c.EnableWebcamCapture {
+		switch c.CaptureMode {
+		case CaptureModeDisable:
+			// do nothing
 			time.Sleep(time.Duration(captureLoopSleepTime) * time.Millisecond)
 			continue
-		}
-
-		if ok := c.Webcam.Read(&sourceMat); !ok {
-			log.Printf("Device closed")
-			return
-		}
-
-		if sourceMat.Empty() {
-			continue
-		}
-
-		if !c.ChromaPanel.Check.Checked {
+		case CaptureModeNormal:
+			// normal capture mode. no filter
+			if !c.ReadWebCam(&sourceMat) {
+				log.Printf("Device closed or empty read from webcam")
+				continue
+			}
 			//newStartTime := time.Now()
 			buf, err := gocv.IMEncode(gocv.PNGFileExt, sourceMat)
 			if err != nil {
@@ -333,7 +334,19 @@ func (c *TopComponent) CaptureLoop() {
 			}
 			//log.Printf("IMEncode took %d ms", time.Since(newStartTime).Milliseconds())
 			c.WebcamImage.Resource = fyne.NewStaticResource("webcam", buf)
-		} else {
+		case CaptureModeColorPick:
+			// disable webcam capture
+			// convert image to hotimage
+			if !c.ReadWebCam(&sourceMat) {
+				log.Printf("Device closed or empty read from webcam")
+				continue
+			}
+		case CaptureModeChromaKey:
+			// chroma key mode - apply chroma key filter and background image, if any
+			if !c.ReadWebCam(&sourceMat) {
+				log.Printf("Device closed or empty read from webcam")
+				continue
+			}
 			// image processing should use HSV
 			gocv.CvtColor(sourceMat, &sourceHsv, gocv.ColorBGRToHSV)
 			nowR := c.ChromaPanel.RedSlider.Value
@@ -385,7 +398,6 @@ func (c *TopComponent) CaptureLoop() {
 			if err != nil {
 				log.Printf("error closing chromaKey due to %s", err.Error())
 			}
-
 		}
 
 		canvas.Refresh(c.WebcamImage)
@@ -394,10 +406,17 @@ func (c *TopComponent) CaptureLoop() {
 	}
 }
 
+type CaptureMode int
+
 const (
 	captureLoopSleepTime = 100
 	webcamImageWidth     = 640
 	webcamImageHeight    = 360
+
+	CaptureModeDisable = iota
+	CaptureModeNormal
+	CaptureModeColorPick
+	CaptureModeChromaKey
 )
 
 func ExistingProjectTapHandler(id string) error {
@@ -462,7 +481,11 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 
 	chromaPanel := ChromaPanel{
 		Check: widget.NewCheck("Enable", func(flag bool) {
-			log.Printf("flag=%v", flag)
+			if flag {
+				component.SetCaptureMode(CaptureModeChromaKey)
+			} else {
+				component.SetCaptureMode(CaptureModeNormal)
+			}
 		}),
 		RedSlider:   widget.NewSlider(0, 255),
 		GreenSlider: widget.NewSlider(0, 255),
@@ -532,7 +555,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 
 	component.Container = rootContainer
 
-	component.EnableCapture()
+	component.SetCaptureMode(CaptureModeNormal)
 
 	return &component
 }
