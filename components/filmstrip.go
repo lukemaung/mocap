@@ -119,7 +119,7 @@ func (f *FilmStrip) SyncToBackend() {
 		for idx, frame := range backend.Backend.Frames[leftIndex:rightIndex] {
 			pinnedFileName := frame.ThumbnailFilename
 			pinnedThumbnailName := frame.ThumbnailFilename
-			image := NewHotImage(pinnedThumbnailName, false, thumbnailWidth, thumbnailHeight,
+			image := NewHotImageFromFile(pinnedThumbnailName, false, thumbnailWidth, thumbnailHeight,
 				func(fileName string, event *fyne.PointEvent) {
 					f.ExclusiveSelectFrame(pinnedFileName)
 				},

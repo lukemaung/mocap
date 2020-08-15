@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/layout"
 	"fyne.io/fyne/theme"
 	"fyne.io/fyne/widget"
+	"image"
 	"image/color"
 	"io/ioutil"
 	"log"
@@ -289,7 +290,7 @@ func NewGallery(parentContainer *fyne.Container, galleryType GalleryType, baseDi
 
 	galleryContainer.NewEntryView = newThingContainer
 	galleryContainer.Container = newThingContainer
-	galleryContainer.Container.Hide()
+	//galleryContainer.Container.Hide()
 	galleryContainer.Container.Show()
 	galleryContainer.Container = galleryContainer.ThumbnailView
 
@@ -331,13 +332,22 @@ func (r *HotImage) TappedSecondary(ev *fyne.PointEvent) {
 	}
 }
 
-func NewHotImage(fileName string, forceResize bool, width int, height int, onTap func(string, *fyne.PointEvent), onSecondaryTap func(string, *fyne.PointEvent)) *HotImage {
-	img := canvas.NewImageFromFile(fileName)
+func NewHotImageFromFile(fileName string, forceResize bool, width int, height int, onTap func(string, *fyne.PointEvent), onSecondaryTap func(string, *fyne.PointEvent)) *HotImage {
+	canvasImage := canvas.NewImageFromFile(fileName)
+	return NewHotImageFromCanvasImage(canvasImage, forceResize, width, height, onTap, onSecondaryTap)
+}
+
+func NewHotImageFromImage(img image.Image, forceResize bool, width int, height int, onTap func(string, *fyne.PointEvent), onSecondaryTap func(string, *fyne.PointEvent)) *HotImage {
+	canvasImage := canvas.NewImageFromImage(img)
+	return NewHotImageFromCanvasImage(canvasImage, forceResize, width, height, onTap, onSecondaryTap)
+}
+
+func NewHotImageFromCanvasImage(canvasImage *canvas.Image, forceResize bool, width int, height int, onTap func(string, *fyne.PointEvent), onSecondaryTap func(string, *fyne.PointEvent)) *HotImage {
 	size := fyne.NewSize(width, height)
 	if forceResize {
-		img.Resize(size)
+		canvasImage.Resize(size)
 	}
-	r := &HotImage{image: img, min: size, OnTap: onTap, OnSecondaryTap: onSecondaryTap}
+	r := &HotImage{image: canvasImage, min: size, OnTap: onTap, OnSecondaryTap: onSecondaryTap}
 	r.ExtendBaseWidget(r)
 	return r
 }
