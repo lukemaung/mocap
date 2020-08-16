@@ -45,6 +45,7 @@ type TopComponent struct {
 
 	ProjectPanel    *Gallery
 	ChromaPanel     *ChromaPanel
+	ZoomPanel       *ZoomPanel
 	BackgroundPanel *BackgroundPanel
 }
 
@@ -60,6 +61,12 @@ type ChromaPanel struct {
 	PreviewColor *canvas.Rectangle
 
 	Container *fyne.Container
+}
+
+type ZoomPanel struct {
+	Container  *fyne.Container
+	ZoomSlider *widget.Slider
+	ZoomLabel  *widget.Label
 }
 
 func (c *ChromaPanel) GetChromaKey() color.Color {
@@ -299,6 +306,18 @@ func (c *TopComponent) captureLoopSleep() {
 	time.Sleep(time.Duration(captureLoopSleepTime) * time.Millisecond)
 }
 
+func (c *TopComponent) applyZoom(sourceMat *gocv.Mat) ([]byte, error) {
+	factor := c.ZoomPanel.ZoomSlider.Value
+	xMax := factor * config.WebcamCaptureWidth
+	yMax := factor * config.WebcamCaptureHeight
+	xOffset := (xMax - config.WebcamCaptureWidth) / 2
+	yOffset := (yMax - config.WebcamCaptureHeight) / 2
+	gocv.Resize(*sourceMat, sourceMat, image.Pt(0, 0), factor, factor, gocv.InterpolationDefault)
+	final := sourceMat.Region(image.Rect(int(xOffset), int(yOffset), int(xOffset+config.WebcamCaptureWidth), int(yOffset+config.WebcamCaptureHeight)))
+	defer final.Close()
+	return gocv.IMEncode(gocv.PNGFileExt, final)
+}
+
 func (c *TopComponent) CaptureLoop() {
 	sourceMat := gocv.NewMat()
 	if ok := c.Webcam.Read(&sourceMat); !ok {
@@ -338,7 +357,7 @@ func (c *TopComponent) CaptureLoop() {
 				continue
 			}
 			//newStartTime := time.Now()
-			buf, err := gocv.IMEncode(gocv.PNGFileExt, sourceMat)
+			buf, err := c.applyZoom(&sourceMat)
 			if err != nil {
 				log.Printf("error: %s", err.Error())
 				c.captureLoopSleep()
@@ -388,14 +407,12 @@ func (c *TopComponent) CaptureLoop() {
 			// displayable image should be in BGR
 			gocv.CvtColor(final, &final, gocv.ColorHSVToBGR)
 
-			// encode the final into png
-			buf, err := gocv.IMEncode(gocv.PNGFileExt, final)
+			buf, err := c.applyZoom(&final)
 			if err != nil {
 				log.Printf("error: %s", err.Error())
 				c.captureLoopSleep()
 				continue
 			}
-
 			c.WebcamImage.Resource = fyne.NewStaticResource("webcam", buf)
 			c.WebcamImageContainer.Objects[0] = c.WebcamImage
 
@@ -522,8 +539,15 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 							log.Printf("error decoding webcam image: %s", err.Error())
 							return
 						}
-						log.Printf("")
-						clr := img.At(x*config.CaptureToDisplayWidthRatio, y*config.CaptureToDisplayWidthRatio) // clicks are on canvas image, where the dimensions are smaller than the underlying capture image
+						tempMat, err := gocv.ImageToMatRGBA(img)
+						if err != nil {
+							log.Printf("error decoding webcam image: %s", err.Error())
+							return
+						}
+						buf, err := component.applyZoom(&tempMat)
+						tempMat.Close()
+						finalImg, err := fastpng.Decode(bytes.NewReader(buf))
+						clr := finalImg.At(x*config.CaptureToDisplayWidthRatio, y*config.CaptureToDisplayWidthRatio) // clicks are on canvas image, where the dimensions are smaller than the underlying capture image
 						r, g, b, a := clr.RGBA()
 						log.Printf("left-clicked on webcam at %#v. color=(%d, %d, %d, %d)", event.Position, r/0x101, g/0x101, b/0x101, a/0x101)
 
@@ -586,6 +610,22 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	component.ChromaPanel = &chromaPanel
 	component.ContextPane = component.ChromaPanel.Container
 
+	// zoom panel
+	zoomLabel := widget.NewLabel("1.0")
+	zoomSlider := widget.NewSlider(1.0, 20.0)
+	zoomSlider.OnChanged = func(value float64) {
+		text := fmt.Sprintf("%.1f", value)
+		zoomLabel.SetText(text)
+	}
+	zoomContainer := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), fyne.NewContainerWithLayout(layout.NewHBoxLayout(), zoomLabel, zoomSlider))
+	zoomContainer.Resize(fyne.NewSize(360, 48))
+	zoomPanel := ZoomPanel{
+		Container:  zoomContainer,
+		ZoomSlider: zoomSlider,
+		ZoomLabel:  zoomLabel,
+	}
+	component.ZoomPanel = &zoomPanel
+
 	// background tab contents
 	backgroundPanel := NewBackgroundPanel()
 	backgroundTabContent := fyne.NewContainer(backgroundPanel.Container)
@@ -612,7 +652,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	tabContainer.Append(&widget.TabItem{
 		Text:    "Zoom",
 		Icon:    nil,
-		Content: fyne.NewContainer(),
+		Content: zoomContainer,
 	})
 	tabContainer.Append(&widget.TabItem{
 		Text:    "Background",

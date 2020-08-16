@@ -36,6 +36,7 @@ func startApp() {
 	webcam, err := gocv.OpenVideoCapture(deviceID)
 	webcam.Set(gocv.VideoCaptureFrameWidth, config.WebcamCaptureWidth)
 	webcam.Set(gocv.VideoCaptureFrameHeight, config.WebcamCaptureHeight)
+	webcam.Set(gocv.VideoCaptureZoom, 0.5)
 	if err != nil {
 		fmt.Printf("Error opening capture device: %v\n", deviceID)
 		return
