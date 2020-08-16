@@ -515,7 +515,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	component.ContextPane = fyne.NewContainerWithLayout(rightLayout)
 
 	chromaPanel := ChromaPanel{
-		ChromaFilterToggle: widget.NewCheck("Apply Chroma Key Filter", func(flag bool) {
+		ChromaFilterToggle: widget.NewCheck("", func(flag bool) {
 			if flag {
 				component.ChromaPanel.ColorPickerToggle.Checked = false
 				component.ChromaPanel.ColorPickerToggle.Refresh()
@@ -524,7 +524,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 				component.SetCaptureMode(CaptureModeNormal)
 			}
 		}),
-		ColorPickerToggle: widget.NewCheck("Color Picker Mode", func(flag bool) {
+		ColorPickerToggle: widget.NewCheck("", func(flag bool) {
 			if flag {
 				component.ChromaPanel.ChromaFilterToggle.Checked = false
 				component.ChromaPanel.ChromaFilterToggle.Refresh()
@@ -590,21 +590,37 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	chromaPanel.PreviewColor = canvas.NewRectangle(chromaPanel.GetChromaKey())
 	chromaPanel.PreviewColor.SetMinSize(fyne.NewSize(320, 36))
 
+	redLabel := widget.NewLabel("R (0)")
+	greenLabel := widget.NewLabel("G (0)")
+	blueLabel := widget.NewLabel("B (0)")
+	fuzzLabel := widget.NewLabel("Fuzz (0)")
 	chromaPanel.RedSlider.OnChanged = func(value float64) {
+		redLabel.SetText(fmt.Sprintf("R (%d)", int(value)))
 		chromaPanel.PreviewColor.FillColor = chromaPanel.GetChromaKey()
 		canvas.Refresh(chromaPanel.PreviewColor)
 	}
 	chromaPanel.GreenSlider.OnChanged = func(value float64) {
+		greenLabel.SetText(fmt.Sprintf("G (%d)", int(value)))
 		chromaPanel.PreviewColor.FillColor = chromaPanel.GetChromaKey()
 		canvas.Refresh(chromaPanel.PreviewColor)
 	}
 	chromaPanel.BlueSlider.OnChanged = func(value float64) {
+		blueLabel.SetText(fmt.Sprintf("B (%d)", int(value)))
 		chromaPanel.PreviewColor.FillColor = chromaPanel.GetChromaKey()
 		canvas.Refresh(chromaPanel.PreviewColor)
 	}
-
-	chromaGroup := widget.NewGroup("Chroma Key", chromaPanel.ChromaFilterToggle, chromaPanel.ColorPickerToggle, chromaPanel.RedSlider, chromaPanel.GreenSlider, chromaPanel.BlueSlider, chromaPanel.FuzzSlider, chromaPanel.PreviewColor)
-	chromaTabContent := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), chromaGroup)
+	chromaPanel.FuzzSlider.OnChanged = func(value float64) {
+		fuzzLabel.SetText(fmt.Sprintf("Fuzz (%d)", int(value)))
+		chromaPanel.PreviewColor.FillColor = chromaPanel.GetChromaKey()
+		canvas.Refresh(chromaPanel.PreviewColor)
+	}
+	chromaToggleGroup := fyne.NewContainerWithLayout(layout.NewFormLayout(), widget.NewLabel("Apply Chroma Key Filter") , chromaPanel.ChromaFilterToggle)
+	pickerToggleGroup := fyne.NewContainerWithLayout(layout.NewFormLayout(), widget.NewLabel("Color Picker Mode"), chromaPanel.ColorPickerToggle)
+	redGroup := fyne.NewContainerWithLayout(layout.NewFormLayout(), redLabel, chromaPanel.RedSlider)
+	greenGroup := fyne.NewContainerWithLayout(layout.NewFormLayout(), greenLabel, chromaPanel.GreenSlider)
+	blueGroup := fyne.NewContainerWithLayout(layout.NewFormLayout(), blueLabel, chromaPanel.BlueSlider)
+	fuzzGroup := fyne.NewContainerWithLayout(layout.NewFormLayout(), fuzzLabel, chromaPanel.FuzzSlider)
+	chromaTabContent := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), chromaToggleGroup, pickerToggleGroup, redGroup, greenGroup, blueGroup, fuzzGroup)
 
 	chromaPanel.Container = chromaTabContent
 	component.ChromaPanel = &chromaPanel
