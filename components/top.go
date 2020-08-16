@@ -36,9 +36,9 @@ type TopComponent struct {
 	Container *fyne.Container
 
 	// camera
-	Webcam      *gocv.VideoCapture
+	Webcam               *gocv.VideoCapture
 	WebcamImageContainer *fyne.Container
-	WebcamImage *canvas.Image
+	WebcamImage          *canvas.Image
 
 	// contextual panel
 	ContextPane *fyne.Container
@@ -50,7 +50,7 @@ type TopComponent struct {
 
 type ChromaPanel struct {
 	ChromaFilterToggle *widget.Check
-	ColorPickerToggle *widget.Check
+	ColorPickerToggle  *widget.Check
 
 	RedSlider   *widget.Slider
 	GreenSlider *widget.Slider
@@ -295,6 +295,10 @@ func (c *TopComponent) ReadWebCam(sourceMat *gocv.Mat) bool {
 	return !sourceMat.Empty()
 }
 
+func (c *TopComponent) captureLoopSleep() {
+	time.Sleep(time.Duration(captureLoopSleepTime) * time.Millisecond)
+}
+
 func (c *TopComponent) CaptureLoop() {
 	sourceMat := gocv.NewMat()
 	if ok := c.Webcam.Read(&sourceMat); !ok {
@@ -317,40 +321,40 @@ func (c *TopComponent) CaptureLoop() {
 	defer final.Close()
 	defer sourceMat.Close()
 
-	for {
+	for { // start infinite capture loops
 		startTime := time.Now()
 		switch c.CaptureMode {
 		case CaptureModeDisable:
 			// do nothing
 			//log.Printf("mode=CaptureModeDisable")
-			time.Sleep(time.Duration(captureLoopSleepTime) * time.Millisecond)
+			c.captureLoopSleep()
 			continue
 		case CaptureModeNormal:
 			// normal capture mode. no filter
 			//log.Printf("mode=CaptureModeNormal")
 			if !c.ReadWebCam(&sourceMat) {
 				log.Printf("Device closed or empty read from webcam")
+				c.captureLoopSleep()
 				continue
 			}
 			//newStartTime := time.Now()
 			buf, err := gocv.IMEncode(gocv.PNGFileExt, sourceMat)
 			if err != nil {
 				log.Printf("error: %s", err.Error())
+				c.captureLoopSleep()
+				continue
 			}
 			//log.Printf("IMEncode took %d ms", time.Since(newStartTime).Milliseconds())
 			c.WebcamImage.Resource = fyne.NewStaticResource("webcam", buf)
 			c.WebcamImageContainer.Objects[0] = c.WebcamImage
 		case CaptureModeColorPick:
-			// disable webcam capture
-			// convert image to hotimage
-			//log.Printf("mode=CaptureModeColorPick")
-			//c.WebcamImageContainer.Objects[0] = c.WebcamImage
-			//time.Sleep(time.Duration(50) * time.Millisecond)
+			// do nothing
 		case CaptureModeChromaKey:
 			// chroma key mode - apply chroma key filter and background image, if any
 			//log.Printf("mode=CaptureModeChromaKey")
 			if !c.ReadWebCam(&sourceMat) {
 				log.Printf("Device closed or empty read from webcam")
+				c.captureLoopSleep()
 				continue
 			}
 			// image processing should use HSV
@@ -388,6 +392,8 @@ func (c *TopComponent) CaptureLoop() {
 			buf, err := gocv.IMEncode(gocv.PNGFileExt, final)
 			if err != nil {
 				log.Printf("error: %s", err.Error())
+				c.captureLoopSleep()
+				continue
 			}
 
 			c.WebcamImage.Resource = fyne.NewStaticResource("webcam", buf)
@@ -408,14 +414,14 @@ func (c *TopComponent) CaptureLoop() {
 		}
 
 		canvas.Refresh(c.WebcamImageContainer)
-//		c.WebcamImageContainer.Refresh()
+		//		c.WebcamImageContainer.Refresh()
 		//canvas.Refresh(c.WebcamImage)
 		loopTiming := time.Since(startTime).Milliseconds()
 		if loopTiming > 50 {
 			log.Printf("warning. capture loop took too long: %d ms", loopTiming)
 		}
-		time.Sleep(time.Duration(captureLoopSleepTime) * time.Millisecond)
-	}
+		c.captureLoopSleep()
+	} // infinite capture loop
 }
 
 type CaptureMode int
@@ -517,9 +523,9 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 							return
 						}
 						log.Printf("")
-						clr := img.At(x * config.CaptureToDisplayWidthRatio, y * config.CaptureToDisplayWidthRatio) // clicks are on canvas image, where the dimensions are smaller than the underlying capture image
+						clr := img.At(x*config.CaptureToDisplayWidthRatio, y*config.CaptureToDisplayWidthRatio) // clicks are on canvas image, where the dimensions are smaller than the underlying capture image
 						r, g, b, a := clr.RGBA()
-						log.Printf("left-clicked on webcam at %#v. color=(%d, %d, %d, %d)", event.Position, r / 0x101, g / 0x101, b / 0x101, a / 0x101)
+						log.Printf("left-clicked on webcam at %#v. color=(%d, %d, %d, %d)", event.Position, r/0x101, g/0x101, b/0x101, a/0x101)
 
 						component.ChromaPanel.RedSlider.Value = float64(r / 0x101)
 						component.ChromaPanel.GreenSlider.Value = float64(g / 0x101)
