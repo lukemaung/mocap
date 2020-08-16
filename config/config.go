@@ -3,12 +3,14 @@ package config
 const (
 	MocapDir = "Mocap Animation"
 
-	WebcamCaptureWidth = 1280
+	WebcamCaptureWidth  = 1280
 	WebcamCaptureHeight = 720
 
-	WebcamDisplayWidth = 640
+	WebcamDisplayWidth  = 640
 	WebcamDisplayHeight = 360
 
-	CaptureToDisplayWidthRatio = WebcamCaptureWidth / WebcamDisplayWidth
+	CaptureToDisplayWidthRatio  = WebcamCaptureWidth / WebcamDisplayWidth
 	CaptureToDisplayHeightRatio = WebcamCaptureHeight / WebcamDisplayHeight
+
+	MaxCameras = 7
 )

@@ -36,7 +36,6 @@ type TopComponent struct {
 	Container *fyne.Container
 
 	// camera
-	Webcam               *gocv.VideoCapture
 	WebcamImageContainer *fyne.Container
 	WebcamImage          *canvas.Image
 
@@ -102,7 +101,7 @@ func (b *BackgroundPanel) RefreshDisplay() {
 func (b *BackgroundPanel) GenerateResizedBackground() {
 	backgroundResized := gocv.NewMat()
 	backgroundResizedHsv := gocv.NewMat()
-	gocv.Resize(*b.BackgroundImageMat, &backgroundResized, image.Pt(config.WebcamCaptureWidth, config.WebcamCaptureHeight), 0, 0, gocv.InterpolationLinear)
+	gocv.Resize(*b.BackgroundImageMat, &backgroundResized, image.Pt(config.WebcamCaptureWidth, config.WebcamCaptureHeight), 0, 0, gocv.InterpolationCubic)
 	gocv.CvtColor(backgroundResized, &backgroundResizedHsv, gocv.ColorBGRToHSV)
 	b.BackgroundResizedHsv = &backgroundResizedHsv
 }
@@ -201,8 +200,6 @@ func (c *TopComponent) saveImage(img *image.Image, absImageFilepath string) erro
 
 func (c *TopComponent) Snapshot() error {
 	defer util.LogPerf("TopComponent.Snapshot()", time.Now())
-	//c.DisableCapture()
-	//defer c.EnableCapture()
 
 	projectName := backend.Backend.Name
 	if projectName == "" {
@@ -273,7 +270,7 @@ func (c *TopComponent) SetCaptureMode(mode CaptureMode) {
 }
 
 func (c *TopComponent) ReadWebCam(sourceMat *gocv.Mat) bool {
-	ok := c.Webcam.Read(sourceMat)
+	ok := backend.CurrentCamera().Read(sourceMat)
 	if !ok {
 		return false
 	}
@@ -299,7 +296,7 @@ func (c *TopComponent) applyZoom(sourceMat *gocv.Mat) ([]byte, error) {
 
 func (c *TopComponent) CaptureLoop() {
 	sourceMat := gocv.NewMat()
-	if ok := c.Webcam.Read(&sourceMat); !ok {
+	if ok := backend.CurrentCamera().Read(&sourceMat); !ok {
 		log.Printf("Device closed")
 		return
 	}
@@ -431,12 +428,13 @@ const (
 	CaptureModeChromaKey
 )
 
-func ExistingProjectTapHandler(id string) error {
+func ExistingProjectTapHandler(projName string) error {
 	defer util.LogPerf("ExistingProjectTapHandler()", time.Now())
-	log.Printf("will load existing project %s", id)
-	err := backend.Backend.Load(id)
+	log.Printf("will load existing project %s", projName)
+	err := backend.Backend.Load(projName)
 	AnimationFilmStripComponent.Tail()
 	AnimationFilmStripComponent.SyncToBackend()
+	UpdateMocapTitle()
 	return err
 }
 
@@ -446,16 +444,16 @@ func NewProjectTapHandler(name string) error {
 	backend.Backend.RemoveAll()
 	AnimationFilmStripComponent.Tail()
 	AnimationFilmStripComponent.SyncToBackend()
+	UpdateMocapTitle()
 	return nil
 }
 
-func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
+func NewTopComponent() *TopComponent {
 	webcamImage := canvas.Image{}
 	webcamImage.SetMinSize(fyne.NewSize(config.WebcamDisplayWidth, config.WebcamDisplayHeight))
 	webcamImageContainer := fyne.NewContainerWithLayout(layout.NewMaxLayout(), &webcamImage)
 
 	component := TopComponent{
-		Webcam:      webcam,
 		WebcamImage: &webcamImage,
 	}
 	component.WebcamImageContainer = webcamImageContainer
@@ -469,7 +467,23 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 		AnimationFilmStripComponent.Tail()
 		AnimationFilmStripComponent.SyncToBackend()
 	})
-	leftContainer := fyne.NewContainerWithLayout(leftLayout, webcamImageContainer, snapshotButton)
+
+	cameraButtons := make([]*widget.Button, 0)
+	for camID := 0; camID < config.MaxCameras; camID ++ {
+		pinnedCamID := camID
+		cameraButtons = append(cameraButtons, widget.NewButton(fmt.Sprintf("Camera %d", pinnedCamID +1), func() {
+			currentCaptureMode := component.CaptureMode
+			component.SetCaptureMode(CaptureModeDisable)
+			backend.SwitchCamera(pinnedCamID)
+			component.SetCaptureMode(currentCaptureMode)
+		}))
+	}
+	cameraButtonContainer := fyne.NewContainerWithLayout(layout.NewHBoxLayout())
+	for _, cb := range cameraButtons {
+		cameraButtonContainer.AddObject(cb)
+	}
+
+	leftContainer := fyne.NewContainerWithLayout(leftLayout, webcamImageContainer, snapshotButton, cameraButtonContainer)
 
 	absBaseDir, err := util.GetMocapBaseDir()
 	if err != nil {

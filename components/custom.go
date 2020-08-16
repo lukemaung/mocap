@@ -231,7 +231,6 @@ func NewGallery(parentContainer *fyne.Container, galleryType GalleryType, baseDi
 	fileIconCellWidth := 160
 	fileIconSize := 90
 	fileTextSize := 20
-	//verticalExtra := 4
 	thumbnailsPanel := fyne.NewContainerWithLayout(layout.NewGridWrapLayout(fyne.NewSize(fileIconCellWidth,
 		fileIconSize+theme.Padding()+fileTextSize)))
 

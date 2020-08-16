@@ -1,9 +1,7 @@
 package main
 
 import (
-	"../components"
 	"flag"
-	"fmt"
 	"fyne.io/fyne"
 	"fyne.io/fyne/app"
 	"fyne.io/fyne/canvas"
@@ -15,13 +13,9 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"../config"
+	"../backend"
+	"../components"
 	"../util"
-)
-
-var (
-	deviceID int
-	err      error
 )
 
 type Mocap struct {
@@ -30,23 +24,35 @@ type Mocap struct {
 	container   *fyne.Container
 }
 
-func startApp() {
-	// open webcam
-	deviceID := 1
-	webcam, err := gocv.OpenVideoCapture(deviceID)
-	webcam.Set(gocv.VideoCaptureFrameWidth, config.WebcamCaptureWidth)
-	webcam.Set(gocv.VideoCaptureFrameHeight, config.WebcamCaptureHeight)
-	webcam.Set(gocv.VideoCaptureZoom, 0.5)
-	if err != nil {
-		fmt.Printf("Error opening capture device: %v\n", deviceID)
-		return
+func closeAllWebcams() {
+	components.AnimationTopComponent.SetCaptureMode(components.CaptureModeDisable)
+	for idx, cam := range backend.Cameras {
+		err := cam.Close()
+		if err != nil {
+			log.Printf("error closing webcam %d: %s", idx, err.Error())
+			continue
+		}
+		log.Printf("closed cam %d", idx)
 	}
+}
 
-	defer webcam.Close()
+func startApp() {
+	firstCamera := 1
+	for deviceID := 0; deviceID < 20; deviceID++ {
+		webcam, _ := backend.SwitchCamera(deviceID)
+		if webcam != nil {
+			firstCamera = deviceID
+		}
+	}
+	backend.SwitchCamera(firstCamera)
+	defer closeAllWebcams()
 
 	mocapApp := app.New()
-	mocapAppWindow := components.NewMocapAppWindow(mocapApp, webcam)
+	mocapAppWindow := components.NewMocapAppWindow(mocapApp)
 	window := *mocapAppWindow.Window
+	components.MocapApp = mocapAppWindow
+	components.UpdateMocapTitle()
+
 	window.ShowAndRun()
 }
 
