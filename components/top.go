@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"../backend"
+	"../config"
 	"../util"
 )
 
@@ -36,6 +37,7 @@ type TopComponent struct {
 
 	// camera
 	Webcam      *gocv.VideoCapture
+	WebcamImageContainer *fyne.Container
 	WebcamImage *canvas.Image
 
 	// contextual panel
@@ -47,7 +49,8 @@ type TopComponent struct {
 }
 
 type ChromaPanel struct {
-	Check *widget.Check
+	ChromaFilterToggle *widget.Check
+	ColorPickerToggle *widget.Check
 
 	RedSlider   *widget.Slider
 	GreenSlider *widget.Slider
@@ -92,7 +95,7 @@ func (b *BackgroundPanel) RefreshDisplay() {
 func (b *BackgroundPanel) GenerateResizedBackground() {
 	backgroundResized := gocv.NewMat()
 	backgroundResizedHsv := gocv.NewMat()
-	gocv.Resize(*b.BackgroundImageMat, &backgroundResized, image.Pt(1280, 720), 0, 0, gocv.InterpolationLinear)
+	gocv.Resize(*b.BackgroundImageMat, &backgroundResized, image.Pt(config.WebcamCaptureWidth, config.WebcamCaptureHeight), 0, 0, gocv.InterpolationLinear)
 	gocv.CvtColor(backgroundResized, &backgroundResizedHsv, gocv.ColorBGRToHSV)
 	b.BackgroundResizedHsv = &backgroundResizedHsv
 }
@@ -298,6 +301,7 @@ func (c *TopComponent) CaptureLoop() {
 		log.Printf("Device closed")
 		return
 	}
+
 	sourceHsv := gocv.NewMat()
 	chromaKey := gocv.NewMat()
 	mask := gocv.NewMat()
@@ -309,20 +313,21 @@ func (c *TopComponent) CaptureLoop() {
 	defer chromaKey.Close()
 	defer mask.Close()
 	defer inverseMask.Close()
-	//defer backgroundResized.Close()
 
 	defer final.Close()
 	defer sourceMat.Close()
 
 	for {
-		//startTime := time.Now()
+		startTime := time.Now()
 		switch c.CaptureMode {
 		case CaptureModeDisable:
 			// do nothing
+			//log.Printf("mode=CaptureModeDisable")
 			time.Sleep(time.Duration(captureLoopSleepTime) * time.Millisecond)
 			continue
 		case CaptureModeNormal:
 			// normal capture mode. no filter
+			//log.Printf("mode=CaptureModeNormal")
 			if !c.ReadWebCam(&sourceMat) {
 				log.Printf("Device closed or empty read from webcam")
 				continue
@@ -334,15 +339,16 @@ func (c *TopComponent) CaptureLoop() {
 			}
 			//log.Printf("IMEncode took %d ms", time.Since(newStartTime).Milliseconds())
 			c.WebcamImage.Resource = fyne.NewStaticResource("webcam", buf)
+			c.WebcamImageContainer.Objects[0] = c.WebcamImage
 		case CaptureModeColorPick:
 			// disable webcam capture
 			// convert image to hotimage
-			if !c.ReadWebCam(&sourceMat) {
-				log.Printf("Device closed or empty read from webcam")
-				continue
-			}
+			//log.Printf("mode=CaptureModeColorPick")
+			//c.WebcamImageContainer.Objects[0] = c.WebcamImage
+			//time.Sleep(time.Duration(50) * time.Millisecond)
 		case CaptureModeChromaKey:
 			// chroma key mode - apply chroma key filter and background image, if any
+			//log.Printf("mode=CaptureModeChromaKey")
 			if !c.ReadWebCam(&sourceMat) {
 				log.Printf("Device closed or empty read from webcam")
 				continue
@@ -385,6 +391,7 @@ func (c *TopComponent) CaptureLoop() {
 			}
 
 			c.WebcamImage.Resource = fyne.NewStaticResource("webcam", buf)
+			c.WebcamImageContainer.Objects[0] = c.WebcamImage
 
 			err = backgroundResult.Close()
 			if err != nil {
@@ -400,8 +407,13 @@ func (c *TopComponent) CaptureLoop() {
 			}
 		}
 
-		canvas.Refresh(c.WebcamImage)
-		//log.Printf("captureloop iteration took %d ms", time.Since(startTime).Milliseconds())
+		canvas.Refresh(c.WebcamImageContainer)
+//		c.WebcamImageContainer.Refresh()
+		//canvas.Refresh(c.WebcamImage)
+		loopTiming := time.Since(startTime).Milliseconds()
+		if loopTiming > 50 {
+			log.Printf("warning. capture loop took too long: %d ms", loopTiming)
+		}
 		time.Sleep(time.Duration(captureLoopSleepTime) * time.Millisecond)
 	}
 }
@@ -410,8 +422,6 @@ type CaptureMode int
 
 const (
 	captureLoopSleepTime = 100
-	webcamImageWidth     = 640
-	webcamImageHeight    = 360
 
 	CaptureModeDisable = iota
 	CaptureModeNormal
@@ -439,12 +449,14 @@ func NewProjectTapHandler(name string) error {
 
 func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	webcamImage := canvas.Image{}
-	webcamImage.SetMinSize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
+	webcamImage.SetMinSize(fyne.NewSize(config.WebcamDisplayWidth, config.WebcamDisplayHeight))
+	webcamImageContainer := fyne.NewContainerWithLayout(layout.NewMaxLayout(), &webcamImage)
 
 	component := TopComponent{
 		Webcam:      webcam,
 		WebcamImage: &webcamImage,
 	}
+	component.WebcamImageContainer = webcamImageContainer
 
 	leftLayout := layout.NewVBoxLayout()
 	snapshotButton := widget.NewButton("Snapshot", func() {
@@ -455,7 +467,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 		AnimationFilmStripComponent.Tail()
 		AnimationFilmStripComponent.SyncToBackend()
 	})
-	leftContainer := fyne.NewContainerWithLayout(leftLayout, &webcamImage, snapshotButton)
+	leftContainer := fyne.NewContainerWithLayout(leftLayout, webcamImageContainer, snapshotButton)
 
 	absBaseDir, err := util.GetMocapBaseDir()
 	if err != nil {
@@ -480,11 +492,63 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	component.ContextPane = fyne.NewContainerWithLayout(rightLayout)
 
 	chromaPanel := ChromaPanel{
-		Check: widget.NewCheck("Enable", func(flag bool) {
+		ChromaFilterToggle: widget.NewCheck("Apply Chroma Key Filter", func(flag bool) {
 			if flag {
+				component.ChromaPanel.ColorPickerToggle.Checked = false
+				component.ChromaPanel.ColorPickerToggle.Refresh()
 				component.SetCaptureMode(CaptureModeChromaKey)
 			} else {
 				component.SetCaptureMode(CaptureModeNormal)
+			}
+		}),
+		ColorPickerToggle: widget.NewCheck("Color Picker Mode", func(flag bool) {
+			if flag {
+				component.ChromaPanel.ChromaFilterToggle.Checked = false
+				component.ChromaPanel.ChromaFilterToggle.Refresh()
+				component.SetCaptureMode(CaptureModeColorPick)
+				// convert webcam image to a hotimage
+				hotImage := NewHotImageFromCanvasImage(component.WebcamImage, true, config.WebcamDisplayWidth, config.WebcamDisplayHeight,
+					func(s string, event *fyne.PointEvent) {
+						x, y := event.Position.X, event.Position.Y
+						bufReader := bytes.NewReader(component.WebcamImage.Resource.Content())
+						img, err := fastpng.Decode(bufReader)
+						if err != nil {
+							log.Printf("error decoding webcam image: %s", err.Error())
+							return
+						}
+						log.Printf("")
+						clr := img.At(x * config.CaptureToDisplayWidthRatio, y * config.CaptureToDisplayWidthRatio) // clicks are on canvas image, where the dimensions are smaller than the underlying capture image
+						r, g, b, a := clr.RGBA()
+						log.Printf("left-clicked on webcam at %#v. color=(%d, %d, %d, %d)", event.Position, r / 0x101, g / 0x101, b / 0x101, a / 0x101)
+
+						component.ChromaPanel.RedSlider.Value = float64(r / 0x101)
+						component.ChromaPanel.GreenSlider.Value = float64(g / 0x101)
+						component.ChromaPanel.BlueSlider.Value = float64(b / 0x101)
+						component.ChromaPanel.FuzzSlider.Value = 20
+						component.ChromaPanel.ColorPickerToggle.Checked = false
+						component.ChromaPanel.ChromaFilterToggle.Checked = true
+						component.ChromaPanel.PreviewColor.FillColor = clr
+						component.ChromaPanel.ChromaFilterToggle.Checked = true
+						component.ChromaPanel.ColorPickerToggle.Checked = false
+
+						component.ChromaPanel.RedSlider.Refresh()
+						component.ChromaPanel.GreenSlider.Refresh()
+						component.ChromaPanel.BlueSlider.Refresh()
+						component.ChromaPanel.FuzzSlider.Refresh()
+						component.ChromaPanel.ColorPickerToggle.Refresh()
+						component.ChromaPanel.ChromaFilterToggle.Refresh()
+						component.ChromaPanel.PreviewColor.Refresh()
+						component.ChromaPanel.ChromaFilterToggle.Refresh()
+						component.ChromaPanel.ColorPickerToggle.Refresh()
+
+						component.SetCaptureMode(CaptureModeChromaKey)
+					}, func(s string, event *fyne.PointEvent) {
+						log.Printf("right-clicked on webcam at %#v", event.Position)
+					})
+				component.WebcamImageContainer.Objects[0] = hotImage
+			} else {
+				component.SetCaptureMode(CaptureModeNormal)
+				component.WebcamImageContainer.Objects[0] = component.WebcamImage
 			}
 		}),
 		RedSlider:   widget.NewSlider(0, 255),
@@ -509,7 +573,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 		canvas.Refresh(chromaPanel.PreviewColor)
 	}
 
-	chromaGroup := widget.NewGroup("Chroma Key Setup", chromaPanel.Check, chromaPanel.RedSlider, chromaPanel.GreenSlider, chromaPanel.BlueSlider, chromaPanel.FuzzSlider, chromaPanel.PreviewColor)
+	chromaGroup := widget.NewGroup("Chroma Key Setup", chromaPanel.ChromaFilterToggle, chromaPanel.ColorPickerToggle, chromaPanel.RedSlider, chromaPanel.GreenSlider, chromaPanel.BlueSlider, chromaPanel.FuzzSlider, chromaPanel.PreviewColor)
 	chromaTabContent := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), chromaGroup)
 
 	chromaPanel.Container = chromaTabContent
@@ -550,7 +614,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	})
 
 	rootLayout := layout.NewHBoxLayout()
-	rootLayout.Layout([]fyne.CanvasObject{leftContainer, tabContainer}, fyne.NewSize(1280, webcamImageHeight))
+	rootLayout.Layout([]fyne.CanvasObject{leftContainer, tabContainer}, fyne.NewSize(config.WebcamCaptureWidth, config.WebcamDisplayHeight))
 	rootContainer := fyne.NewContainerWithLayout(rootLayout, leftContainer, tabContainer)
 
 	component.Container = rootContainer

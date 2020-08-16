@@ -15,6 +15,7 @@ import (
 	"os"
 	"runtime/pprof"
 
+	"../config"
 	"../util"
 )
 
@@ -33,8 +34,8 @@ func startApp() {
 	// open webcam
 	deviceID := 1
 	webcam, err := gocv.OpenVideoCapture(deviceID)
-	webcam.Set(gocv.VideoCaptureFrameWidth, 1280)
-	webcam.Set(gocv.VideoCaptureFrameHeight, 720)
+	webcam.Set(gocv.VideoCaptureFrameWidth, config.WebcamCaptureWidth)
+	webcam.Set(gocv.VideoCaptureFrameHeight, config.WebcamCaptureHeight)
 	if err != nil {
 		fmt.Printf("Error opening capture device: %v\n", deviceID)
 		return

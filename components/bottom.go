@@ -14,6 +14,7 @@ import (
 	_ "image/png"
 
 	"../backend"
+	"../config"
 	"../util"
 )
 
@@ -54,7 +55,7 @@ func (f *Player) On() {
 		fileName := backend.Backend.Frames[f.frameNum].Filename
 		AnimationBottomComponent.PreviewImage = canvas.NewImageFromFile(fileName)
 		AnimationBottomComponent.PreviewImageContainer.Objects[0] = AnimationBottomComponent.PreviewImage
-		AnimationBottomComponent.PreviewImage.SetMinSize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
+		AnimationBottomComponent.PreviewImage.SetMinSize(fyne.NewSize(config.WebcamDisplayWidth, config.WebcamDisplayHeight))
 		AnimationBottomComponent.PreviewImageContainer.Refresh()
 		time.Sleep(f.sleepTime)
 	}
@@ -80,7 +81,7 @@ func (f *Player) GenerateVideo() {
 		return
 	}
 	absPath := fmt.Sprintf(`%s\%s\%s.mp4`, baseDir, backend.Backend.Name, backend.Backend.Name)
-	vw, err := gocv.VideoWriterFile(absPath, "mp4v", float64(f.Fps),1280.0, 720.0, true)
+	vw, err := gocv.VideoWriterFile(absPath, "mp4v", float64(f.Fps),config.WebcamCaptureWidth, config.WebcamCaptureHeight, true)
 	if err != nil {
 		log.Printf("error getting video writer: %s", err.Error())
 		return
@@ -121,7 +122,7 @@ func NewPlayer() *Player {
 
 func NewBottomComponent() *BottomComponent {
 	previewImage := canvas.NewImageFromFile(`D:\Luke\Downloads\test.png`)
-	previewImage.SetMinSize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
+	previewImage.SetMinSize(fyne.NewSize(config.WebcamDisplayWidth, config.WebcamDisplayHeight))
 	previewImageContainer := fyne.NewContainerWithLayout(layout.NewMaxLayout(), previewImage)
 
 	component := BottomComponent{

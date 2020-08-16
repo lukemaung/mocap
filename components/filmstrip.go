@@ -9,6 +9,7 @@ import (
 	"log"
 
 	"../backend"
+	"../config"
 )
 
 const (
@@ -88,7 +89,7 @@ func (f *FilmStrip) ExclusiveSelectFrame(fileName string) {
 		fileName := backend.Backend.Frames[f.Cursor].Filename
 		AnimationBottomComponent.PreviewImage = canvas.NewImageFromFile(fileName)
 		AnimationBottomComponent.PreviewImageContainer.Objects[0] = AnimationBottomComponent.PreviewImage
-		AnimationBottomComponent.PreviewImage.SetMinSize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
+		AnimationBottomComponent.PreviewImage.SetMinSize(fyne.NewSize(config.WebcamDisplayWidth, config.WebcamDisplayHeight))
 		AnimationBottomComponent.PreviewImageContainer.Refresh()
 	}
 }
@@ -190,7 +191,7 @@ func NewFilmStripComponent() *FilmStrip {
 	items = append(items, leftButton)
 	items = append(items, frameContainer)
 	items = append(items, rightButton)
-	rootLayout.Layout(items, fyne.NewSize(1280, 360))
+	rootLayout.Layout(items, fyne.NewSize(config.WebcamCaptureWidth, config.WebcamDisplayHeight))
 	rootContainer := fyne.NewContainerWithLayout(rootLayout, items...)
 	filmstrip.Container = rootContainer
 

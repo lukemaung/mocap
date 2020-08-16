@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"../backend"
+	"../config"
 	"../util"
 )
 
@@ -244,14 +245,14 @@ func NewGallery(parentContainer *fyne.Container, galleryType GalleryType, baseDi
 
 	scrollContainer := widget.NewVScrollContainer(thumbnailsPanel)
 	scrollContainer.SetMinSize(fyne.NewSize(fileIconCellWidth*2+theme.Padding(),
-		webcamImageHeight)) // NOTE: it's critical to call SetMinSize() on containers
+		config.WebcamDisplayHeight)) // NOTE: it's critical to call SetMinSize() on containers
 
 	newButton := widget.NewButton("New", func() {
 		galleryContainer.OnTapNewButton()
 	})
 
 	thumbnailViewContainer := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), newButton, scrollContainer) // gridlayout makes sure the
-	thumbnailViewContainer.Resize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
+	thumbnailViewContainer.Resize(fyne.NewSize(config.WebcamDisplayWidth, config.WebcamDisplayHeight))
 	galleryContainer.ThumbnailView = thumbnailViewContainer
 
 	projectEntry := widget.NewEntry()
@@ -286,7 +287,7 @@ func NewGallery(parentContainer *fyne.Container, galleryType GalleryType, baseDi
 	}
 
 	newThingContainer := fyne.NewContainerWithLayout(layout.NewGridLayout(1), &newThingForm)
-	newThingContainer.Resize(fyne.NewSize(webcamImageWidth, webcamImageHeight))
+	newThingContainer.Resize(fyne.NewSize(config.WebcamDisplayWidth, config.WebcamDisplayHeight))
 
 	galleryContainer.NewEntryView = newThingContainer
 	galleryContainer.Container = newThingContainer
