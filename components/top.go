@@ -579,7 +579,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 		canvas.Refresh(chromaPanel.PreviewColor)
 	}
 
-	chromaGroup := widget.NewGroup("Chroma Key Setup", chromaPanel.ChromaFilterToggle, chromaPanel.ColorPickerToggle, chromaPanel.RedSlider, chromaPanel.GreenSlider, chromaPanel.BlueSlider, chromaPanel.FuzzSlider, chromaPanel.PreviewColor)
+	chromaGroup := widget.NewGroup("Chroma Key", chromaPanel.ChromaFilterToggle, chromaPanel.ColorPickerToggle, chromaPanel.RedSlider, chromaPanel.GreenSlider, chromaPanel.BlueSlider, chromaPanel.FuzzSlider, chromaPanel.PreviewColor)
 	chromaTabContent := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), chromaGroup)
 
 	chromaPanel.Container = chromaTabContent
@@ -603,11 +603,12 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 		Icon:    nil,
 		Content: chromaTabContent,
 	})
-	tabContainer.Append(&widget.TabItem{
-		Text:    "Filter",
-		Icon:    nil,
-		Content: fyne.NewContainer(),
-	})
+	//TODO: implement this some day
+	//tabContainer.Append(&widget.TabItem{
+	//	Text:    "Filter",
+	//	Icon:    nil,
+	//	Content: fyne.NewContainer(),
+	//})
 	tabContainer.Append(&widget.TabItem{
 		Text:    "Zoom",
 		Icon:    nil,
