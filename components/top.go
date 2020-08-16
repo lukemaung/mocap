@@ -312,7 +312,7 @@ func (c *TopComponent) applyZoom(sourceMat *gocv.Mat) ([]byte, error) {
 	yMax := factor * config.WebcamCaptureHeight
 	xOffset := (xMax - config.WebcamCaptureWidth) / 2
 	yOffset := (yMax - config.WebcamCaptureHeight) / 2
-	gocv.Resize(*sourceMat, sourceMat, image.Pt(0, 0), factor, factor, gocv.InterpolationDefault)
+	gocv.Resize(*sourceMat, sourceMat, image.Pt(0, 0), factor, factor, gocv.InterpolationCubic)
 	final := sourceMat.Region(image.Rect(int(xOffset), int(yOffset), int(xOffset+config.WebcamCaptureWidth), int(yOffset+config.WebcamCaptureHeight)))
 	defer final.Close()
 	return gocv.IMEncode(gocv.PNGFileExt, final)
@@ -613,16 +613,15 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	// zoom panel
 	zoomLabel := widget.NewLabel("1.0")
 	zoomSlider := widget.NewSlider(1.0, 20.0)
+	zoomSlider.Step = 0.25
 	zoomSlider.OnChanged = func(value float64) {
 		text := fmt.Sprintf("%.1f", value)
 		zoomLabel.SetText(text)
 	}
-	zoomContainer := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), fyne.NewContainerWithLayout(layout.NewHBoxLayout(), zoomLabel, zoomSlider))
-	zoomContainer.Resize(fyne.NewSize(360, 48))
+	zoomContainer := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), fyne.NewContainerWithLayout(layout.NewFormLayout(), zoomLabel, zoomSlider))
 	zoomPanel := ZoomPanel{
 		Container:  zoomContainer,
 		ZoomSlider: zoomSlider,
-		ZoomLabel:  zoomLabel,
 	}
 	component.ZoomPanel = &zoomPanel
 
