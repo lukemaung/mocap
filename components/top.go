@@ -162,27 +162,6 @@ type ProjectPanel struct {
 	Container *fyne.Container
 }
 
-func (s *ProjectPanel) GetThumbNails() []fyne.Container {
-	defer util.LogPerf("ProjectPanel.Snapshot()", time.Now())
-	objs := make([]fyne.Container, 0)
-	for _, name := range *s.ProjectNames {
-		nameFixed := name
-		rsc, _ := fyne.LoadResourceFromPath(fmt.Sprintf(`D:\Luke\Downloads\%s.png`, name))
-		img := NewTappableIcon(rsc, nameFixed, func(id string) error {
-			log.Printf("tapped on %s", nameFixed)
-			//TODO: load project
-
-			return nil
-		})
-
-		label := widget.NewLabel(name)
-		obj := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), img, label)
-
-		objs = append(objs, *obj)
-	}
-	return objs
-}
-
 func (c *TopComponent) saveCanvasImage(canvasImage *canvas.Image, absImageFilepath string) (*image.Image, error) {
 	imageFile, err := os.Create(absImageFilepath)
 	if err != nil {
@@ -620,7 +599,7 @@ func NewTopComponent(webcam *gocv.VideoCapture) *TopComponent {
 	greenGroup := fyne.NewContainerWithLayout(layout.NewFormLayout(), greenLabel, chromaPanel.GreenSlider)
 	blueGroup := fyne.NewContainerWithLayout(layout.NewFormLayout(), blueLabel, chromaPanel.BlueSlider)
 	fuzzGroup := fyne.NewContainerWithLayout(layout.NewFormLayout(), fuzzLabel, chromaPanel.FuzzSlider)
-	chromaTabContent := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), chromaToggleGroup, pickerToggleGroup, redGroup, greenGroup, blueGroup, fuzzGroup)
+	chromaTabContent := fyne.NewContainerWithLayout(layout.NewVBoxLayout(), chromaToggleGroup, pickerToggleGroup, redGroup, greenGroup, blueGroup, fuzzGroup, chromaPanel.PreviewColor)
 
 	chromaPanel.Container = chromaTabContent
 	component.ChromaPanel = &chromaPanel

@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/layout"
 	"fyne.io/fyne/widget"
 	"gocv.io/x/gocv"
+	"image/color"
 	"log"
 	"strconv"
 	"time"
@@ -121,13 +122,13 @@ func NewPlayer() *Player {
 }
 
 func NewBottomComponent() *BottomComponent {
-	previewImage := canvas.NewImageFromFile(`D:\Luke\Downloads\test.png`)
+	previewImage := canvas.NewRectangle(color.White)
 	previewImage.SetMinSize(fyne.NewSize(config.WebcamDisplayWidth, config.WebcamDisplayHeight))
 	previewImageContainer := fyne.NewContainerWithLayout(layout.NewMaxLayout(), previewImage)
 
 	component := BottomComponent{
 		PreviewImageContainer: previewImageContainer,
-		PreviewImage:          previewImage,
+		PreviewImage:          nil,
 		Player:                NewPlayer(),
 	}
 
