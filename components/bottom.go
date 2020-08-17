@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"fyne.io/fyne"
 	"fyne.io/fyne/canvas"
+	"fyne.io/fyne/dialog"
 	"fyne.io/fyne/layout"
 	"fyne.io/fyne/widget"
 	"gocv.io/x/gocv"
@@ -81,7 +82,8 @@ func (f *Player) GenerateVideo() {
 		log.Printf("error getting basedir: %s", err.Error())
 		return
 	}
-	absPath := fmt.Sprintf(`%s\%s\%s.mp4`, baseDir, backend.Backend.Name, backend.Backend.Name)
+	timestampSuffix := time.Now().Format("2006-01-02-15:04")
+	absPath := fmt.Sprintf(`%s\%s\%s-%s.mp4`, baseDir, backend.Backend.Name, backend.Backend.Name, timestampSuffix)
 	vw, err := gocv.VideoWriterFile(absPath, "mp4v", float64(f.Fps),config.WebcamCaptureWidth, config.WebcamCaptureHeight, true)
 	if err != nil {
 		log.Printf("error getting video writer: %s", err.Error())
@@ -89,6 +91,9 @@ func (f *Player) GenerateVideo() {
 	}
 	log.Printf("video file=%s", absPath)
 	defer vw.Close()
+
+	appWindow := *MocapApp.Window
+	progressBar := dialog.NewProgress("Generating Video", "Please wait while generating video.", appWindow)
 	for idx, frame := range backend.Backend.Frames {
 		srcMat := gocv.IMRead(frame.Filename, gocv.IMReadColor)
 		if srcMat.Empty() {
@@ -104,8 +109,11 @@ func (f *Player) GenerateVideo() {
 		if err != nil {
 			log.Printf("error closing frame: %s", err.Error())
 		}
+		progressBar.SetValue(float64(idx)/float64(len(backend.Backend.Frames)))
 	}
-
+	progressBar.SetValue(1.0)
+	progressBar.Hide()
+	DisplayUserTip(fmt.Sprintf("Video file is saved at:\n%s", absPath))
 }
 
 func (f *Player) SetFPS(fps int) {
@@ -160,21 +168,37 @@ func NewBottomComponent() *BottomComponent {
 	fpsLabelContainer := fyne.NewContainerWithLayout(layout.NewCenterLayout(), fpsLabel)
 
 	playButton := widget.NewButton("Play", func() {
+		if backend.Backend.Name == "" {
+			DisplayUserTip("Please create/open a project first.")
+			return
+		}
 		log.Printf("play button clicked")
 		component.Player.Start()
 	})
 
 	stopButton := widget.NewButton("Pause", func() {
+		if backend.Backend.Name == "" {
+			DisplayUserTip("Please create/open a project first.")
+			return
+		}
 		log.Printf("pause button clicked")
 		component.Player.Stop()
 	})
 
 	rewindButton := widget.NewButton("Rewind", func() {
+		if backend.Backend.Name == "" {
+			DisplayUserTip("Please create/open a project first.")
+			return
+		}
 		log.Printf("rewind button clicked")
 		component.Player.Rewind()
 	})
 
 	generateVideoButton := widget.NewButton("Generate", func() {
+		if backend.Backend.Name == "" {
+			DisplayUserTip("Please create/open a project first.")
+			return
+		}
 		log.Printf("generate button clicked")
 		component.Player.GenerateVideo()
 	})

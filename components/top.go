@@ -407,10 +407,8 @@ func (c *TopComponent) CaptureLoop() {
 		}
 
 		canvas.Refresh(c.WebcamImageContainer)
-		//		c.WebcamImageContainer.Refresh()
-		//canvas.Refresh(c.WebcamImage)
 		loopTiming := time.Since(startTime).Milliseconds()
-		if loopTiming > 50 {
+		if loopTiming > 200 {
 			log.Printf("warning. capture loop took too long: %d ms", loopTiming)
 		}
 		c.captureLoopSleep()
@@ -448,6 +446,11 @@ func NewProjectTapHandler(name string) error {
 	return nil
 }
 
+func DisplayUserTip(text string) {
+	appWindow := *MocapApp.Window
+	dialog.NewInformation("Useful Tip", text, appWindow)
+}
+
 func NewTopComponent() *TopComponent {
 	webcamImage := canvas.Image{}
 	webcamImage.SetMinSize(fyne.NewSize(config.WebcamDisplayWidth, config.WebcamDisplayHeight))
@@ -462,7 +465,7 @@ func NewTopComponent() *TopComponent {
 	snapshotButton := widget.NewButton("Snapshot", func() {
 		err := component.Snapshot()
 		if err != nil {
-			log.Printf("error snapshot: %s", err)
+			DisplayUserTip("Please create/open a project before taking snapshots.")
 		}
 		AnimationFilmStripComponent.Tail()
 		AnimationFilmStripComponent.SyncToBackend()
@@ -474,7 +477,10 @@ func NewTopComponent() *TopComponent {
 		cameraButtons = append(cameraButtons, widget.NewButton(fmt.Sprintf("Camera %d", pinnedCamID +1), func() {
 			currentCaptureMode := component.CaptureMode
 			component.SetCaptureMode(CaptureModeDisable)
-			backend.SwitchCamera(pinnedCamID)
+			_, _, err := backend.SwitchCamera(pinnedCamID)
+			if err != nil {
+				DisplayUserTip("There is no camera at this slot. Will continue using previous camera. \nPlease connect a camera to this slot if you wish to use it.")
+			}
 			component.SetCaptureMode(currentCaptureMode)
 		}))
 	}

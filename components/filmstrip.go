@@ -18,7 +18,10 @@ const (
 	thumbnailCount  = 16
 )
 
-var AnimationFilmStripComponent *FilmStrip
+var (
+	AnimationFilmStripComponent *FilmStrip
+	FirstTimeFrameSelect = true
+)
 
 type FilmStrip struct {
 	Container      *fyne.Container
@@ -91,6 +94,11 @@ func (f *FilmStrip) ExclusiveSelectFrame(fileName string) {
 		AnimationBottomComponent.PreviewImageContainer.Objects[0] = AnimationBottomComponent.PreviewImage
 		AnimationBottomComponent.PreviewImage.SetMinSize(fyne.NewSize(config.WebcamDisplayWidth, config.WebcamDisplayHeight))
 		AnimationBottomComponent.PreviewImageContainer.Refresh()
+
+		if FirstTimeFrameSelect {
+			DisplayUserTip("You can insert a new frame at this location by clicking Snapshot.\n You can remove this frame by right clicking on it.")
+			FirstTimeFrameSelect = false
+		}
 	}
 }
 

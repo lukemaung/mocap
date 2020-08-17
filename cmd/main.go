@@ -15,6 +15,7 @@ import (
 
 	"../backend"
 	"../components"
+	"../config"
 	"../util"
 )
 
@@ -37,10 +38,10 @@ func closeAllWebcams() {
 }
 
 func startApp() {
-	firstCamera := 1
-	for deviceID := 0; deviceID < 20; deviceID++ {
-		webcam, _ := backend.SwitchCamera(deviceID)
-		if webcam != nil {
+	firstCamera := -1
+	for deviceID := 0; deviceID < config.MaxCameras; deviceID++ {
+		webcam, _, _ := backend.SwitchCamera(deviceID)
+		if webcam != nil && firstCamera < 0 {
 			firstCamera = deviceID
 		}
 	}
@@ -50,6 +51,7 @@ func startApp() {
 	mocapApp := app.New()
 	mocapAppWindow := components.NewMocapAppWindow(mocapApp)
 	window := *mocapAppWindow.Window
+	window.SetFixedSize(true)
 	components.MocapApp = mocapAppWindow
 	components.UpdateMocapTitle()
 
