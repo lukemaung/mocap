@@ -13,10 +13,10 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"../backend"
-	"../components"
-	"../config"
-	"../util"
+	"./backend"
+	"./components"
+	"./config"
+	"./util"
 )
 
 type Mocap struct {
