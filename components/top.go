@@ -488,6 +488,18 @@ func NewTopComponent() *TopComponent {
 	for _, cb := range cameraButtons {
 		cameraButtonContainer.AddObject(cb)
 	}
+	cameraButtonContainer.AddObject(widget.NewButton("?", func() {
+		DisplayUserTip(fmt.Sprintf(`Mocap Animation
+Mocap Animation v%s
+
+Powered by opensource software:
+- https://github.com/hybridgroup/gocv
+- https://developer.fyne.io
+
+Icons made by https://www.flaticon.com/authors/pixel-perfect
+
+Copyright (c) Luke Maung 2020`, config.Version))
+	}))
 
 	leftContainer := fyne.NewContainerWithLayout(leftLayout, webcamImageContainer, snapshotButton, cameraButtonContainer)
 

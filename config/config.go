@@ -1,6 +1,8 @@
 package config
 
 const (
+	Version = "0.1.0"
+
 	MocapDir = "Mocap Animation"
 
 	WebcamCaptureWidth  = 1280
