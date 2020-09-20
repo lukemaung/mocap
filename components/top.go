@@ -101,7 +101,7 @@ func (b *BackgroundPanel) RefreshDisplay() {
 func (b *BackgroundPanel) GenerateResizedBackground() {
 	backgroundResized := gocv.NewMat()
 	backgroundResizedHsv := gocv.NewMat()
-	gocv.Resize(*b.BackgroundImageMat, &backgroundResized, image.Pt(config.WebcamCaptureWidth, config.WebcamCaptureHeight), 0, 0, gocv.InterpolationCubic)
+	gocv.Resize(*b.BackgroundImageMat, &backgroundResized, image.Pt(config.WebcamCaptureWidth, config.WebcamCaptureHeight), 0, 0, gocv.InterpolationLanczos4)
 	gocv.CvtColor(backgroundResized, &backgroundResizedHsv, gocv.ColorBGRToHSV)
 	b.BackgroundResizedHsv = &backgroundResizedHsv
 }
@@ -288,7 +288,7 @@ func (c *TopComponent) applyZoom(sourceMat *gocv.Mat) ([]byte, error) {
 	yMax := factor * config.WebcamCaptureHeight
 	xOffset := (xMax - config.WebcamCaptureWidth) / 2
 	yOffset := (yMax - config.WebcamCaptureHeight) / 2
-	gocv.Resize(*sourceMat, sourceMat, image.Pt(0, 0), factor, factor, gocv.InterpolationCubic)
+	gocv.Resize(*sourceMat, sourceMat, image.Pt(0, 0), factor, factor, gocv.InterpolationLanczos4)
 	final := sourceMat.Region(image.Rect(int(xOffset), int(yOffset), int(xOffset+config.WebcamCaptureWidth), int(yOffset+config.WebcamCaptureHeight)))
 	defer final.Close()
 	return gocv.IMEncode(gocv.PNGFileExt, final)
@@ -418,7 +418,7 @@ func (c *TopComponent) CaptureLoop() {
 type CaptureMode int
 
 const (
-	captureLoopSleepTime = 100
+	captureLoopSleepTime = 200
 
 	CaptureModeDisable = iota
 	CaptureModeNormal
@@ -639,8 +639,8 @@ Copyright (c) Luke Maung 2020`, config.Version))
 
 	// zoom panel
 	zoomLabel := widget.NewLabel("1.0")
-	zoomSlider := widget.NewSlider(1.0, 20.0)
-	zoomSlider.Step = 0.25
+	zoomSlider := widget.NewSlider(1.0, 5.0)
+	zoomSlider.Step = 0.1
 	zoomSlider.OnChanged = func(value float64) {
 		text := fmt.Sprintf("%.1f", value)
 		zoomLabel.SetText(text)
